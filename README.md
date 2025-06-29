@@ -1,6 +1,6 @@
 # Ajedrez Didáctico
 
-Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje.
+Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora cuenta con un tema oscuro de estilo neón para una experiencia moderna y agradable a la vista.
 
 ## Uso
 

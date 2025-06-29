@@ -1,7 +1,8 @@
 body {
-    font-family: Arial, sans-serif;
+    font-family: 'Orbitron', Arial, sans-serif;
     text-align: center;
-    background-color: #f0f0f0;
+    background-color: #0d1117;
+    color: #ffffff;
 }
 
 .board {
@@ -10,7 +11,8 @@ body {
     grid-template-rows: repeat(8, 60px);
     margin: 20px auto;
     width: 480px;
-    border: 2px solid #333;
+    border: 2px solid #39ff14;
+    box-shadow: 0 0 15px #39ff14;
 }
 
 .square {
@@ -22,30 +24,43 @@ body {
     font-size: 32px;
 }
 
+
 .light {
-    background-color: #f0d9b5;
+    background-color: #1d1f21;
 }
 
+
 .dark {
-    background-color: #b58863;
+    background-color: #111111;
 }
 
 .highlight {
-    background-color: yellow;
+    background-color: #39ff14;
+    box-shadow: 0 0 10px #39ff14;
 }
 
 .attack {
-    background-color: orange;
+    background-color: #ff00ff;
+    box-shadow: 0 0 10px #ff00ff;
 }
 
 .danger {
-    background-color: #ff8080;
+    background-color: #ff073a;
+    box-shadow: 0 0 10px #ff073a;
 }
 
 .check {
-    background-color: #ff3333;
+    background-color: #00ffff;
+    box-shadow: 0 0 10px #00ffff;
 }
 
 .info {
+    margin-top: 20px;
+    color: #cccccc;
+}
+
+h1 {
+    color: #39ff14;
+    text-shadow: 0 0 5px #39ff14, 0 0 10px #39ff14;
     margin-top: 20px;
 }
