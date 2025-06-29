@@ -83,14 +83,18 @@ function onSquareClick(e) {
         if (movePiece(selected.row, selected.col, row, col)) {
             selected = null;
             renderBoard();
-        } else if (piece && isSameColor(piece, board[selected.row][selected.col])) {
+        } else if (
+            piece &&
+            isSameColor(piece, board[selected.row][selected.col]) &&
+            isWhite(piece) === isWhiteTurn()
+        ) {
             selected = { row, col };
             highlightMoves(row, col);
         } else {
             selected = null;
             renderBoard();
         }
-    } else if (piece) {
+    } else if (piece && isWhite(piece) === isWhiteTurn()) {
         selected = { row, col };
         highlightMoves(row, col);
     }
@@ -250,6 +254,8 @@ function inside(r,c) {
 
 function movePiece(sr, sc, dr, dc) {
     const piece = board[sr][sc];
+    if (isWhite(piece) !== isWhiteTurn()) return false;
+
     const moves = legalMoves(sr, sc);
     if (!moves.some(m => m[0] === dr && m[1] === dc)) return false;
 
