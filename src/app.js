@@ -10,6 +10,7 @@ let board = [];
 let selected = null;
 let viewMode = 1; // default view mode
 let enPassant = null; // square available for en passant capture
+let lastMove = null; // store last move for highlighting
 
 const PIECES = {
     'p': '♟',
@@ -62,10 +63,14 @@ function renderBoard() {
         for (let col = 0; col < 8; col++) {
             const square = getSquareElement(row, col);
             square.textContent = '';
-            square.classList.remove('highlight','attack','danger','check');
+            square.classList.remove('highlight','attack','danger','check','last-move');
             const piece = board[row][col];
             if (piece) square.textContent = PIECES[piece];
         }
+    }
+    if (lastMove) {
+        getSquareElement(lastMove.from[0], lastMove.from[1]).classList.add('last-move');
+        getSquareElement(lastMove.to[0], lastMove.to[1]).classList.add('last-move');
     }
     if (viewMode === 3) highlightDanger();
     if (viewMode === 4) highlightChecks();
@@ -82,7 +87,6 @@ function onSquareClick(e) {
     if (selected) {
         if (movePiece(selected.row, selected.col, row, col)) {
             selected = null;
-            renderBoard();
         } else if (
             piece &&
             isSameColor(piece, board[selected.row][selected.col]) &&
@@ -252,7 +256,11 @@ function inside(r,c) {
     return r >=0 && r<8 && c>=0 && c<8;
 }
 
-function movePiece(sr, sc, dr, dc) {
+/**
+ * Update board state for a move without re-rendering the board.
+ * Returns true if the move is legal and executed.
+ */
+function executeMove(sr, sc, dr, dc) {
     const piece = board[sr][sc];
     if (isWhite(piece) !== isWhiteTurn()) return false;
 
@@ -280,7 +288,50 @@ function movePiece(sr, sc, dr, dc) {
     }
 
     turn = !turn;
-    renderBoard();
+    return true;
+}
+
+/**
+ * Animate a piece move from source to destination.
+ */
+function animateMove(sr, sc, dr, dc, piece) {
+    const fromSquare = getSquareElement(sr, sc);
+    const toSquare = getSquareElement(dr, dc);
+    const boardRect = boardElement.getBoundingClientRect();
+    const fromRect = fromSquare.getBoundingClientRect();
+    const toRect = toSquare.getBoundingClientRect();
+
+    const anim = document.createElement('div');
+    anim.classList.add('anim-piece');
+    anim.textContent = PIECES[piece];
+    anim.style.left = (fromRect.left - boardRect.left) + 'px';
+    anim.style.top = (fromRect.top - boardRect.top) + 'px';
+    anim.style.width = fromRect.width + 'px';
+    anim.style.height = fromRect.height + 'px';
+    boardElement.appendChild(anim);
+
+    fromSquare.textContent = '';
+    toSquare.textContent = '';
+
+    requestAnimationFrame(() => {
+        anim.style.left = (toRect.left - boardRect.left) + 'px';
+        anim.style.top = (toRect.top - boardRect.top) + 'px';
+    });
+
+    anim.addEventListener('transitionend', () => {
+        anim.remove();
+        renderBoard();
+    });
+}
+
+/**
+ * Perform a move with animation and update the board.
+ */
+function movePiece(sr, sc, dr, dc) {
+    const piece = board[sr][sc];
+    if (!executeMove(sr, sc, dr, dc)) return false;
+    lastMove = { from: [sr, sc], to: [dr, dc] };
+    animateMove(sr, sc, dr, dc, piece);
     return true;
 }
 
