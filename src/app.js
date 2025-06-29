@@ -338,12 +338,20 @@ function isKingInCheck(forWhite){
     return enemyMoves.some(([r,c]) => r===kingPos[0] && c===kingPos[1]);
 }
 
-// Allow quick view mode switch using number keys
+// Allow quick view mode switch using number keys or numpad
 window.addEventListener('keydown', e => {
-    const num = parseInt(e.key);
-    if (!isNaN(num)) {
+    let num = NaN;
+    if (/^Digit\d$/.test(e.code)) {
+        num = parseInt(e.code.slice(5), 10);
+    } else if (/^Numpad\d$/.test(e.code)) {
+        num = parseInt(e.code.slice(6), 10);
+    } else {
+        num = parseInt(e.key);
+    }
+    if (!isNaN(num) && num >= 1 && num <= 4) {
         viewMode = num;
         renderBoard();
+        e.preventDefault();
     }
 });
 

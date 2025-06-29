@@ -5,7 +5,7 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
 ## Uso
 
 1. Abre `index.html` en tu navegador.
-2. Presiona los números del 1 al 4 para cambiar el modo de vista:
+2. Presiona las teclas numéricas (1 a 4) para cambiar el modo de vista. Se aceptan tanto los dígitos del teclado principal como los del teclado numérico. No es necesario tener activado el bloqueo numérico:
    - **1**: vista normal con movimientos disponibles al seleccionar una pieza.
    - **2**: además de los movimientos, muestra las casillas atacadas por la pieza seleccionada.
    - **3**: resalta nuestras piezas que están siendo atacadas.
