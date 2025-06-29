@@ -59,6 +59,8 @@ function createBoard() {
             square.addEventListener('click', onSquareClick);
             square.addEventListener('dragover', e => e.preventDefault());
             square.addEventListener('drop', onDrop);
+            square.addEventListener('mouseenter', onSquareHover);
+            square.addEventListener('mouseleave', onSquareLeave);
             const pieceEl = document.createElement('span');
             pieceEl.classList.add('piece');
             pieceEl.addEventListener('dragstart', onDragStart);
@@ -91,6 +93,24 @@ function renderBoard() {
 
 function getSquareElement(row, col) {
     return boardElement.querySelector(`.square[data-row="${row}"][data-col="${col}"]`);
+}
+
+function onSquareHover(e) {
+    if (!activeViews.has(1) || selected) return;
+    const row = parseInt(e.currentTarget.dataset.row);
+    const col = parseInt(e.currentTarget.dataset.col);
+    const piece = board[row][col];
+    if (piece && isWhite(piece) === isWhiteTurn()) {
+        highlightMoves(row, col);
+    }
+}
+
+function onSquareLeave() {
+    if (!selected) {
+        renderBoard();
+    } else {
+        highlightMoves(selected.row, selected.col);
+    }
 }
 
 function onSquareClick(e) {

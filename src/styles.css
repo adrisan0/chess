@@ -3,7 +3,7 @@
     --neon-s: 100%;
     --neon-l: 55%;
     --neon-color: hsl(var(--neon-h), var(--neon-s), var(--neon-l));
-    --piece-size: 32px;
+    --piece-size: 48px;
 }
 
 body {
@@ -41,6 +41,7 @@ body {
     width: 100%;
     height: 100%;
     line-height: 1;
+    vertical-align: middle;
 }
 
 
