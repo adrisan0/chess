@@ -12,3 +12,10 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
    - **4**: indica las casillas donde podemos dar jaque al rival.
 
 La partida se juega con click sobre las casillas. El turno comienza con blancas.
+
+## Ajustes
+
+Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
+
+- El tamaño de las piezas mediante un control deslizante.
+- El brillo del color neón del tema oscuro.
