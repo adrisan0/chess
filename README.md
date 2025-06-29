@@ -11,8 +11,9 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
    - **3**: señala nuestras piezas en peligro.
    - **4**: indica las casillas desde las que podemos dar jaque.
 
-   Debajo de estas instrucciones ahora se muestra un indicador con los modos
-   activos para saber en todo momento qué vistas están habilitadas.
+   Debajo de estas instrucciones se muestra un indicador con iconos a color que
+   representan cada vista activa para saber en todo momento qué opciones están
+   habilitadas.
  
 La partida se juega haciendo clic o arrastrando las piezas hasta su destino. El turno comienza con blancas. En todo momento se muestran las piezas capturadas y un contador de tiempo para cada bando.
 
