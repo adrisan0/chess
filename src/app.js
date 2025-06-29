@@ -1,4 +1,11 @@
 const boardElement = document.getElementById('board');
+const settingsMenu = document.getElementById('settingsMenu');
+const settingsToggle = document.getElementById('settingsToggle');
+const pieceSizeInput = document.getElementById('pieceSize');
+const neonInput = document.getElementById('neonBrightness');
+
+// Board state and view configuration
+
 let board = [];
 let selected = null;
 let viewMode = 1; // default view mode
@@ -248,6 +255,7 @@ function inside(r,c) {
 function movePiece(sr, sc, dr, dc) {
     const piece = board[sr][sc];
     if (isWhite(piece) !== isWhiteTurn()) return false;
+
     const moves = legalMoves(sr, sc);
     if (!moves.some(m => m[0] === dr && m[1] === dc)) return false;
 
@@ -330,12 +338,26 @@ function isKingInCheck(forWhite){
     return enemyMoves.some(([r,c]) => r===kingPos[0] && c===kingPos[1]);
 }
 
+// Allow quick view mode switch using number keys
 window.addEventListener('keydown', e => {
     const num = parseInt(e.key);
     if (!isNaN(num)) {
         viewMode = num;
         renderBoard();
     }
+});
+
+// Settings menu handlers
+settingsToggle.addEventListener('click', () => {
+    settingsMenu.classList.toggle('hidden');
+});
+
+pieceSizeInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--piece-size', `${pieceSizeInput.value}px`);
+});
+
+neonInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--neon-l', `${neonInput.value}%`);
 });
 
 initBoard();

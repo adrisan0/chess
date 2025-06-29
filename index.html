@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Ajedrez Didáctico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="src/styles.css">
 </head>
 <body>
@@ -11,6 +14,15 @@
     <div id="board" class="board"></div>
     <div id="info" class="info">
         <p>Presiona 1 para ver movimientos, 2 para ver casillas atacadas, 3 para ver casillas propias en peligro, 4 para ver jaques posibles.</p>
+    </div>
+    <button id="settingsToggle">Ajustes</button>
+    <div id="settingsMenu" class="settings hidden">
+        <label>Tamaño de pieza
+            <input type="range" id="pieceSize" min="24" max="72" value="32">
+        </label>
+        <label>Brillo neón
+            <input type="range" id="neonBrightness" min="30" max="70" value="55">
+        </label>
     </div>
     <script src="src/app.js"></script>
 </body>
