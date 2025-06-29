@@ -8,9 +8,14 @@ const neonInput = document.getElementById('neonBrightness');
 
 let board = [];
 let selected = null;
-let viewMode = 1; // default view mode
+const activeViews = new Set([1]);
 let enPassant = null; // square available for en passant capture
 let lastMove = null; // store last move for highlighting
+let capturedWhite = [];
+let capturedBlack = [];
+let whiteTime = 0;
+let blackTime = 0;
+let timerId = null;
 
 const PIECES = {
     'p': '♟',
@@ -52,6 +57,12 @@ function createBoard() {
             square.dataset.row = row;
             square.dataset.col = col;
             square.addEventListener('click', onSquareClick);
+            square.addEventListener('dragover', e => e.preventDefault());
+            square.addEventListener('drop', onDrop);
+            const pieceEl = document.createElement('span');
+            pieceEl.classList.add('piece');
+            pieceEl.addEventListener('dragstart', onDragStart);
+            square.appendChild(pieceEl);
             boardElement.appendChild(square);
         }
     }
@@ -62,18 +73,20 @@ function renderBoard() {
     for (let row = 0; row < 8; row++) {
         for (let col = 0; col < 8; col++) {
             const square = getSquareElement(row, col);
-            square.textContent = '';
+            const pieceEl = square.querySelector('.piece');
+            pieceEl.textContent = '';
             square.classList.remove('highlight','attack','danger','check','last-move');
             const piece = board[row][col];
-            if (piece) square.textContent = PIECES[piece];
+            if (piece) pieceEl.textContent = PIECES[piece];
+            pieceEl.draggable = !!piece && isWhite(piece) === isWhiteTurn();
         }
     }
     if (lastMove) {
         getSquareElement(lastMove.from[0], lastMove.from[1]).classList.add('last-move');
         getSquareElement(lastMove.to[0], lastMove.to[1]).classList.add('last-move');
     }
-    if (viewMode === 3) highlightDanger();
-    if (viewMode === 4) highlightChecks();
+    if (activeViews.has(3)) highlightDanger();
+    if (activeViews.has(4)) highlightChecks();
 }
 
 function getSquareElement(row, col) {
@@ -104,6 +117,34 @@ function onSquareClick(e) {
     }
 }
 
+function onDragStart(e) {
+    const square = e.currentTarget.parentElement;
+    const row = parseInt(square.dataset.row);
+    const col = parseInt(square.dataset.col);
+    const piece = board[row][col];
+    if (!piece || isWhite(piece) !== isWhiteTurn()) {
+        e.preventDefault();
+        return;
+    }
+    selected = { row, col };
+    highlightMoves(row, col);
+    e.dataTransfer.setData('text/plain', `${row},${col}`);
+}
+
+function onDrop(e) {
+    e.preventDefault();
+    const data = e.dataTransfer.getData('text/plain');
+    if (!data) return;
+    const [sr, sc] = data.split(',').map(n => parseInt(n, 10));
+    const dr = parseInt(e.currentTarget.dataset.row);
+    const dc = parseInt(e.currentTarget.dataset.col);
+    if (movePiece(sr, sc, dr, dc)) {
+        selected = null;
+    } else {
+        renderBoard();
+    }
+}
+
 function isWhite(piece) {
     return piece === piece.toUpperCase();
 }
@@ -115,10 +156,12 @@ function isSameColor(a, b) {
 function highlightMoves(row, col) {
     renderBoard();
     const moves = legalMoves(row, col);
-    for (const [r, c] of moves) {
-        getSquareElement(r, c).classList.add('highlight');
+    if (activeViews.has(1)) {
+        for (const [r, c] of moves) {
+            getSquareElement(r, c).classList.add('highlight');
+        }
     }
-    if (viewMode === 2) highlightAttacks(row, col);
+    if (activeViews.has(2)) highlightAttacks(row, col);
 }
 
 function highlightAttacks(row, col) {
@@ -267,6 +310,8 @@ function executeMove(sr, sc, dr, dc) {
     const moves = legalMoves(sr, sc);
     if (!moves.some(m => m[0] === dr && m[1] === dc)) return false;
 
+    let captured = board[dr][dc];
+
     if (
         piece.toLowerCase() === 'p' &&
         enPassant &&
@@ -276,6 +321,7 @@ function executeMove(sr, sc, dr, dc) {
         !board[dr][dc]
     ) {
         const capRow = isWhite(piece) ? dr + 1 : dr - 1;
+        captured = board[capRow][dc];
         board[capRow][dc] = null;
     }
 
@@ -287,7 +333,14 @@ function executeMove(sr, sc, dr, dc) {
         enPassant = [(sr + dr) / 2, sc];
     }
 
+    if (captured) {
+        if (isWhite(captured)) capturedWhite.push(captured);
+        else capturedBlack.push(captured);
+    }
+
     turn = !turn;
+    updateCapturedDisplay();
+    updateTimer();
     return true;
 }
 
@@ -310,8 +363,8 @@ function animateMove(sr, sc, dr, dc, piece) {
     anim.style.height = fromRect.height + 'px';
     boardElement.appendChild(anim);
 
-    fromSquare.textContent = '';
-    toSquare.textContent = '';
+    fromSquare.querySelector('.piece').textContent = '';
+    toSquare.querySelector('.piece').textContent = '';
 
     requestAnimationFrame(() => {
         anim.style.left = (toRect.left - boardRect.left) + 'px';
@@ -389,6 +442,30 @@ function isKingInCheck(forWhite){
     return enemyMoves.some(([r,c]) => r===kingPos[0] && c===kingPos[1]);
 }
 
+function updateCapturedDisplay() {
+    document.getElementById('capturedWhite').textContent = capturedWhite.map(p => PIECES[p]).join(' ');
+    document.getElementById('capturedBlack').textContent = capturedBlack.map(p => PIECES[p]).join(' ');
+}
+
+function formatTime(sec) {
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
+function updateTimer() {
+    clearInterval(timerId);
+    let start = Date.now();
+    timerId = setInterval(() => {
+        const now = Date.now();
+        const diff = Math.floor((now - start) / 1000);
+        if (turn) whiteTime += diff; else blackTime += diff;
+        document.getElementById('timeWhite').textContent = formatTime(whiteTime);
+        document.getElementById('timeBlack').textContent = formatTime(blackTime);
+        start = now;
+    }, 1000);
+}
+
 // Allow quick view mode switch using number keys or numpad
 window.addEventListener('keydown', e => {
     let num = NaN;
@@ -400,7 +477,8 @@ window.addEventListener('keydown', e => {
         num = parseInt(e.key);
     }
     if (!isNaN(num) && num >= 1 && num <= 4) {
-        viewMode = num;
+        if (activeViews.has(num)) activeViews.delete(num);
+        else activeViews.add(num);
         renderBoard();
         e.preventDefault();
     }
@@ -421,3 +499,5 @@ neonInput.addEventListener('input', () => {
 
 initBoard();
 createBoard();
+updateCapturedDisplay();
+updateTimer();

@@ -5,13 +5,13 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
 ## Uso
 
 1. Abre `index.html` en tu navegador.
-2. Presiona las teclas numéricas (1 a 4) para cambiar el modo de vista. Se aceptan tanto los dígitos del teclado principal como los del teclado numérico. No es necesario tener activado el bloqueo numérico:
-   - **1**: vista normal con movimientos disponibles al seleccionar una pieza.
-   - **2**: además de los movimientos, muestra las casillas atacadas por la pieza seleccionada.
-   - **3**: resalta nuestras piezas que están siendo atacadas.
-   - **4**: indica las casillas donde podemos dar jaque al rival.
-
-La partida se juega con click sobre las casillas. El turno comienza con blancas.
+2. Presiona las teclas numéricas (1 a 4) para alternar cada modo de vista. Puedes combinarlos:
+   - **1**: muestra los movimientos disponibles al seleccionar una pieza.
+   - **2**: resalta las casillas atacadas por la pieza seleccionada.
+   - **3**: señala nuestras piezas en peligro.
+   - **4**: indica las casillas desde las que podemos dar jaque.
+ 
+La partida se juega haciendo clic o arrastrando las piezas hasta su destino. El turno comienza con blancas. En todo momento se muestran las piezas capturadas y un contador de tiempo para cada bando.
 
 ## Reglas de juego
 

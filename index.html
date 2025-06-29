@@ -12,8 +12,16 @@
 <body>
     <h1>Ajedrez Didáctico</h1>
     <div id="board" class="board"></div>
+    <div id="timer" class="timer">
+        <span>Blancas: <span id="timeWhite">00:00</span></span>
+        <span>Negras: <span id="timeBlack">00:00</span></span>
+    </div>
+    <div id="captured" class="captured">
+        <div>Capturas blancas: <span id="capturedWhite"></span></div>
+        <div>Capturas negras: <span id="capturedBlack"></span></div>
+    </div>
     <div id="info" class="info">
-        <p>Presiona 1 para ver movimientos, 2 para ver casillas atacadas, 3 para ver casillas propias en peligro, 4 para ver jaques posibles.</p>
+        <p>Presiona las teclas 1 a 4 para alternar las vistas. Se pueden combinar varias opciones a la vez.</p>
     </div>
     <button id="settingsToggle">Ajustes</button>
     <div id="settingsMenu" class="settings hidden">
