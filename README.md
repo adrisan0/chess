@@ -13,6 +13,13 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
 
 La partida se juega con click sobre las casillas. El turno comienza con blancas.
 
+## Ajustes
+
+Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
+
+- El tamaño de las piezas mediante un control deslizante.
+- El brillo del color neón del tema oscuro.
+
 ## Reglas de juego
 
 * **Turnos**: las blancas mueven primero y luego se alterna un movimiento por
@@ -25,3 +32,4 @@ La partida se juega con click sobre las casillas. El turno comienza con blancas.
   al propio rey en jaque, obligando a mover de forma legal en todo momento.
 * **Peón al paso**: cuando un peón avanza dos casillas desde su posición inicial
   puede ser capturado en la siguiente jugada como si solo hubiera avanzado una.
+
