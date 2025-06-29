@@ -30,6 +30,9 @@ Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
 - El tamaño de las piezas mediante un control deslizante (por defecto ahora se
   muestran más grandes).
 - El brillo del color neón del tema oscuro.
+- Dentro del submenú **Iluminación** puedes ajustar:
+  - La intensidad del resplandor que rodea tablero y resaltados.
+  - La saturación del color neón.
 
 * **Capturas**: al mover a una casilla ocupada por una pieza rival, dicha pieza
   se retira del tablero.
@@ -39,3 +42,8 @@ Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
   al propio rey en jaque, obligando a mover de forma legal en todo momento.
 * **Peón al paso**: cuando un peón avanza dos casillas desde su posición inicial
   puede ser capturado en la siguiente jugada como si solo hubiera avanzado una.
+
+## Historial de movimientos
+
+Debajo del tablero se muestra una lista con todas las jugadas realizadas en notación algebraica.
+Un botón permite exportar la partida en formato PGN para analizarla con otros programas.

@@ -32,6 +32,20 @@
         <label>Brillo neón
             <input type="range" id="neonBrightness" min="30" max="70" value="55">
         </label>
+        <details id="lightingSettings">
+            <summary>Iluminación</summary>
+            <label>Intensidad del resplandor
+                <input type="range" id="glowIntensity" min="5" max="30" value="15">
+            </label>
+            <label>Saturación del neón
+                <input type="range" id="neonSaturation" min="50" max="100" value="100">
+            </label>
+        </details>
+    </div>
+    <div id="moveContainer" class="moves">
+        <h2>Movimientos</h2>
+        <ol id="moveList"></ol>
+        <button id="exportPGN">Exportar PGN</button>
     </div>
     <script src="src/app.js"></script>
 </body>
