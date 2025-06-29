@@ -108,6 +108,13 @@ h1 {
 .views {
     margin-top: 5px;
     color: var(--neon-color);
+    display: flex;
+    justify-content: center;
+}
+
+.view-icon {
+    margin-right: 6px;
+    font-size: 1.2em;
 }
 
 .last-move {

@@ -32,6 +32,21 @@ const PIECES = {
     'K': '♔'
 };
 
+// Icon and color definition for each view mode
+const VIEW_ICONS = {
+    1: '🔍', // Mostrar movimientos posibles
+    2: '⚔️', // Casillas atacadas
+    3: '⚠️', // Piezas en peligro
+    4: '♚'  // Casillas de jaque
+};
+
+const VIEW_COLORS = {
+    1: 'var(--neon-color)',
+    2: '#ff00ff',
+    3: '#ff073a',
+    4: '#00ffff'
+};
+
 function initBoard() {
     const initial = [
         ['r','n','b','q','k','b','n','r'],
@@ -492,11 +507,20 @@ function updateTimer() {
 function updateViewIndicator() {
     const indicator = document.getElementById('activeViews');
     if (!indicator) return;
+    indicator.innerHTML = '';
     if (activeViews.size === 0) {
         indicator.textContent = 'Sin vistas activas';
-    } else {
-        indicator.textContent = 'Vistas activas: ' + [...activeViews].sort().join(', ');
+        return;
     }
+    const frag = document.createDocumentFragment();
+    [...activeViews].sort().forEach(view => {
+        const span = document.createElement('span');
+        span.classList.add('view-icon');
+        span.textContent = VIEW_ICONS[view] || view;
+        span.style.color = VIEW_COLORS[view] || 'inherit';
+        frag.appendChild(span);
+    });
+    indicator.appendChild(frag);
 }
 
 // Allow quick view mode switch using number keys or numpad
