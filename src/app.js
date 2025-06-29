@@ -9,6 +9,7 @@ const neonInput = document.getElementById('neonBrightness');
 let board = [];
 let selected = null;
 let viewMode = 1; // default view mode
+let enPassant = null; // square available for en passant capture
 
 const PIECES = {
     'p': '♟',
@@ -82,14 +83,18 @@ function onSquareClick(e) {
         if (movePiece(selected.row, selected.col, row, col)) {
             selected = null;
             renderBoard();
-        } else if (piece && isSameColor(piece, board[selected.row][selected.col])) {
+        } else if (
+            piece &&
+            isSameColor(piece, board[selected.row][selected.col]) &&
+            isWhite(piece) === isWhiteTurn()
+        ) {
             selected = { row, col };
             highlightMoves(row, col);
         } else {
             selected = null;
             renderBoard();
         }
-    } else if (piece) {
+    } else if (piece && isWhite(piece) === isWhiteTurn()) {
         selected = { row, col };
         highlightMoves(row, col);
     }
@@ -105,7 +110,7 @@ function isSameColor(a, b) {
 
 function highlightMoves(row, col) {
     renderBoard();
-    const moves = generateMoves(row, col);
+    const moves = legalMoves(row, col);
     for (const [r, c] of moves) {
         getSquareElement(r, c).classList.add('highlight');
     }
@@ -170,13 +175,22 @@ function generateMoves(row, col) {
                 if (!board[r][c]) {
                     if (dr === -2 || dr === 2) {
                         const startRow = isWhitePiece ? 6 : 1;
-                        if (row === startRow && !board[row + dr/2][c]) moves.push([r,c]);
+                        if (row === startRow && !board[row + dr/2][c]) moves.push([r, c]);
                     } else {
-                        moves.push([r,c]);
+                        moves.push([r, c]);
                     }
                 }
             } else {
-                if (board[r][c] && !isSameColor(board[r][c], piece)) moves.push([r,c]);
+                if (board[r][c] && !isSameColor(board[r][c], piece)) {
+                    moves.push([r, c]);
+                } else if (
+                    !board[r][c] &&
+                    enPassant &&
+                    enPassant[0] === r &&
+                    enPassant[1] === c
+                ) {
+                    moves.push([r, c]);
+                }
             }
         } else {
             while (inside(r,c)) {
@@ -193,6 +207,42 @@ function generateMoves(row, col) {
     return moves;
 }
 
+function legalMoves(row, col) {
+    const piece = board[row][col];
+    const moves = generateMoves(row, col);
+    const legal = [];
+    for (const [r, c] of moves) {
+        const capture = board[r][c];
+        const prevEnPassant = enPassant;
+        let epCapture = null;
+        board[row][col] = null;
+        board[r][c] = piece;
+        if (
+            piece.toLowerCase() === 'p' &&
+            prevEnPassant &&
+            prevEnPassant[0] === r &&
+            prevEnPassant[1] === c &&
+            c !== col &&
+            !capture
+        ) {
+            const capRow = isWhite(piece) ? r + 1 : r - 1;
+            epCapture = board[capRow][c];
+            board[capRow][c] = null;
+        }
+        if (!isKingInCheck(isWhite(piece))) {
+            legal.push([r, c]);
+        }
+        board[row][col] = piece;
+        board[r][c] = capture;
+        if (epCapture !== null) {
+            const capRow = isWhite(piece) ? r + 1 : r - 1;
+            board[capRow][c] = epCapture;
+        }
+        enPassant = prevEnPassant;
+    }
+    return legal;
+}
+
 function generateAttacks(row, col) {
     const moves = generateMoves(row, col);
     return moves.filter(([r,c]) => board[r][c] && !isSameColor(board[r][c], board[row][col]));
@@ -204,10 +254,31 @@ function inside(r,c) {
 
 function movePiece(sr, sc, dr, dc) {
     const piece = board[sr][sc];
-    const moves = generateMoves(sr, sc);
-    if (!moves.some(m => m[0]===dr && m[1]===dc)) return false;
+    if (isWhite(piece) !== isWhiteTurn()) return false;
+
+    const moves = legalMoves(sr, sc);
+    if (!moves.some(m => m[0] === dr && m[1] === dc)) return false;
+
+    if (
+        piece.toLowerCase() === 'p' &&
+        enPassant &&
+        enPassant[0] === dr &&
+        enPassant[1] === dc &&
+        dc !== sc &&
+        !board[dr][dc]
+    ) {
+        const capRow = isWhite(piece) ? dr + 1 : dr - 1;
+        board[capRow][dc] = null;
+    }
+
     board[dr][dc] = piece;
     board[sr][sc] = null;
+
+    enPassant = null;
+    if (piece.toLowerCase() === 'p' && Math.abs(dr - sr) === 2) {
+        enPassant = [(sr + dr) / 2, sc];
+    }
+
     turn = !turn;
     renderBoard();
     return true;

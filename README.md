@@ -13,9 +13,24 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
 
 La partida se juega con click sobre las casillas. El turno comienza con blancas.
 
+## Reglas de juego
+
+* **Turnos**: las blancas mueven primero y luego se alterna un movimiento por
+  jugador. Solo pueden seleccionarse piezas del bando al que le toca mover.
+  No se permiten jugadas que dejen al propio rey en jaque.
+
 ## Ajustes
 
 Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
 
 - El tamaño de las piezas mediante un control deslizante.
 - El brillo del color neón del tema oscuro.
+
+* **Capturas**: al mover a una casilla ocupada por una pieza rival, dicha pieza
+  se retira del tablero.
+* **Jaque**: si un movimiento ataca al rey contrario, el tablero resalta las
+  casillas desde las que se puede dar jaque.
+* **Movimientos legales**: solo se muestran y ejecutan movimientos que no dejan
+  al propio rey en jaque, obligando a mover de forma legal en todo momento.
+* **Peón al paso**: cuando un peón avanza dos casillas desde su posición inicial
+  puede ser capturado en la siguiente jugada como si solo hubiera avanzado una.
