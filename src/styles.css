@@ -1,3 +1,11 @@
+:root {
+    --neon-h: 110;
+    --neon-s: 100%;
+    --neon-l: 55%;
+    --neon-color: hsl(var(--neon-h), var(--neon-s), var(--neon-l));
+    --piece-size: 32px;
+}
+
 body {
     font-family: 'Orbitron', Arial, sans-serif;
     text-align: center;
@@ -11,8 +19,8 @@ body {
     grid-template-rows: repeat(8, 60px);
     margin: 20px auto;
     width: 480px;
-    border: 2px solid #39ff14;
-    box-shadow: 0 0 15px #39ff14;
+    border: 2px solid var(--neon-color);
+    box-shadow: 0 0 15px var(--neon-color);
 }
 
 .square {
@@ -21,7 +29,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 32px;
+    font-size: var(--piece-size);
 }
 
 
@@ -35,8 +43,8 @@ body {
 }
 
 .highlight {
-    background-color: #39ff14;
-    box-shadow: 0 0 10px #39ff14;
+    background-color: var(--neon-color);
+    box-shadow: 0 0 10px var(--neon-color);
 }
 
 .attack {
@@ -60,7 +68,27 @@ body {
 }
 
 h1 {
-    color: #39ff14;
-    text-shadow: 0 0 5px #39ff14, 0 0 10px #39ff14;
+    color: var(--neon-color);
+    text-shadow: 0 0 5px var(--neon-color), 0 0 10px var(--neon-color);
     margin-top: 20px;
+}
+
+.settings {
+    width: 480px;
+    margin: 10px auto;
+    text-align: left;
+}
+
+.settings label {
+    display: block;
+    margin: 5px 0;
+    color: #cccccc;
+}
+
+.settings input[type="range"] {
+    width: 100%;
+}
+
+.hidden {
+    display: none;
 }
