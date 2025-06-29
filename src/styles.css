@@ -149,3 +149,18 @@ h1 {
 .captured div {
     margin-top: 5px;
 }
+
+.moves {
+    width: 480px;
+    margin: 20px auto;
+    text-align: left;
+    color: #cccccc;
+}
+
+.moves ol {
+    padding-left: 20px;
+}
+
+.moves button {
+    margin-top: 10px;
+}
