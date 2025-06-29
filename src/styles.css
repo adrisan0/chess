@@ -1,0 +1,51 @@
+body {
+    font-family: Arial, sans-serif;
+    text-align: center;
+    background-color: #f0f0f0;
+}
+
+.board {
+    display: grid;
+    grid-template-columns: repeat(8, 60px);
+    grid-template-rows: repeat(8, 60px);
+    margin: 20px auto;
+    width: 480px;
+    border: 2px solid #333;
+}
+
+.square {
+    width: 60px;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 32px;
+}
+
+.light {
+    background-color: #f0d9b5;
+}
+
+.dark {
+    background-color: #b58863;
+}
+
+.highlight {
+    background-color: yellow;
+}
+
+.attack {
+    background-color: orange;
+}
+
+.danger {
+    background-color: #ff8080;
+}
+
+.check {
+    background-color: #ff3333;
+}
+
+.info {
+    margin-top: 20px;
+}
