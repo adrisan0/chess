@@ -3,6 +3,8 @@ const settingsMenu = document.getElementById('settingsMenu');
 const settingsToggle = document.getElementById('settingsToggle');
 const pieceSizeInput = document.getElementById('pieceSize');
 const neonInput = document.getElementById('neonBrightness');
+const glowInput = document.getElementById('glowIntensity');
+const saturationInput = document.getElementById('neonSaturation');
 
 // Board state and view configuration
 
@@ -553,6 +555,14 @@ pieceSizeInput.addEventListener('input', () => {
 
 neonInput.addEventListener('input', () => {
     document.documentElement.style.setProperty('--neon-l', `${neonInput.value}%`);
+});
+
+glowInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--glow-intensity', `${glowInput.value}px`);
+});
+
+saturationInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--neon-s', `${saturationInput.value}%`);
 });
 
 initBoard();
