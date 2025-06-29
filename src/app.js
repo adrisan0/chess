@@ -486,6 +486,19 @@ function updateTimer() {
     }, 1000);
 }
 
+/**
+ * Display the currently active view modes on screen.
+ */
+function updateViewIndicator() {
+    const indicator = document.getElementById('activeViews');
+    if (!indicator) return;
+    if (activeViews.size === 0) {
+        indicator.textContent = 'Sin vistas activas';
+    } else {
+        indicator.textContent = 'Vistas activas: ' + [...activeViews].sort().join(', ');
+    }
+}
+
 // Allow quick view mode switch using number keys or numpad
 window.addEventListener('keydown', e => {
     let num = NaN;
@@ -500,6 +513,7 @@ window.addEventListener('keydown', e => {
         if (activeViews.has(num)) activeViews.delete(num);
         else activeViews.add(num);
         renderBoard();
+        updateViewIndicator();
         e.preventDefault();
     }
 });
@@ -521,3 +535,4 @@ initBoard();
 createBoard();
 updateCapturedDisplay();
 updateTimer();
+updateViewIndicator();
