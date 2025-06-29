@@ -2,6 +2,7 @@
     --neon-h: 110;
     --neon-s: 100%;
     --neon-l: 55%;
+    --glow-intensity: 15px;
     --neon-color: hsl(var(--neon-h), var(--neon-s), var(--neon-l));
     --piece-size: 48px;
 }
@@ -20,7 +21,7 @@ body {
     margin: 20px auto;
     width: 480px;
     border: 2px solid var(--neon-color);
-    box-shadow: 0 0 15px var(--neon-color);
+    box-shadow: 0 0 var(--glow-intensity) var(--neon-color);
     position: relative;
 }
 
@@ -56,22 +57,22 @@ body {
 
 .highlight {
     background-color: var(--neon-color);
-    box-shadow: 0 0 10px var(--neon-color);
+    box-shadow: 0 0 var(--glow-intensity) var(--neon-color);
 }
 
 .attack {
     background-color: #ff00ff;
-    box-shadow: 0 0 10px #ff00ff;
+    box-shadow: 0 0 var(--glow-intensity) #ff00ff;
 }
 
 .danger {
     background-color: #ff073a;
-    box-shadow: 0 0 10px #ff073a;
+    box-shadow: 0 0 var(--glow-intensity) #ff073a;
 }
 
 .check {
     background-color: #00ffff;
-    box-shadow: 0 0 10px #00ffff;
+    box-shadow: 0 0 var(--glow-intensity) #00ffff;
 }
 
 .info {
@@ -147,4 +148,19 @@ h1 {
 
 .captured div {
     margin-top: 5px;
+}
+
+.moves {
+    width: 480px;
+    margin: 20px auto;
+    text-align: left;
+    color: #cccccc;
+}
+
+.moves ol {
+    padding-left: 20px;
+}
+
+.moves button {
+    margin-top: 10px;
 }

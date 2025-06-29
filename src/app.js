@@ -3,6 +3,8 @@ const settingsMenu = document.getElementById('settingsMenu');
 const settingsToggle = document.getElementById('settingsToggle');
 const pieceSizeInput = document.getElementById('pieceSize');
 const neonInput = document.getElementById('neonBrightness');
+const glowInput = document.getElementById('glowIntensity');
+const saturationInput = document.getElementById('neonSaturation');
 
 // Board state and view configuration
 
@@ -17,6 +19,7 @@ let whiteTime = 0;
 let blackTime = 0;
 let timerId = null;
 let playerIsWhite = true; // true if human plays white
+let moveHistory = [];
 
 const PIECES = {
     'p': '♟',
@@ -339,14 +342,14 @@ function inside(r,c) {
 
 /**
  * Update board state for a move without re-rendering the board.
- * Returns true if the move is legal and executed.
+ * Returns an object with the result of the move.
  */
 function executeMove(sr, sc, dr, dc) {
     const piece = board[sr][sc];
-    if (isWhite(piece) !== isWhiteTurn()) return false;
+    if (isWhite(piece) !== isWhiteTurn()) return { valid: false };
 
     const moves = legalMoves(sr, sc);
-    if (!moves.some(m => m[0] === dr && m[1] === dc)) return false;
+    if (!moves.some(m => m[0] === dr && m[1] === dc)) return { valid: false };
 
     let captured = board[dr][dc];
 
@@ -379,7 +382,8 @@ function executeMove(sr, sc, dr, dc) {
     turn = !turn;
     updateCapturedDisplay();
     updateTimer();
-    return true;
+    const check = isKingInCheck(turn);
+    return { valid: true, captured, check };
 }
 
 /**
@@ -420,8 +424,10 @@ function animateMove(sr, sc, dr, dc, piece) {
  */
 function movePiece(sr, sc, dr, dc) {
     const piece = board[sr][sc];
-    if (!executeMove(sr, sc, dr, dc)) return false;
+    const result = executeMove(sr, sc, dr, dc);
+    if (!result.valid) return false;
     lastMove = { from: [sr, sc], to: [dr, dc] };
+    recordMove(sr, sc, dr, dc, piece, result.captured, result.check);
     animateMove(sr, sc, dr, dc, piece);
     return true;
 }
@@ -502,6 +508,62 @@ function updateTimer() {
         document.getElementById('timeBlack').textContent = formatTime(blackTime);
         start = now;
     }, 1000);
+}
+
+const FILES = ['a','b','c','d','e','f','g','h'];
+
+function squareName(row, col) {
+    return FILES[col] + (8 - row);
+}
+
+function toAlgebraic(sr, sc, dr, dc, piece, captured, check) {
+    const dest = squareName(dr, dc);
+    let notation;
+    if (piece.toLowerCase() === 'p') {
+        const file = FILES[sc];
+        notation = captured ? `${file}x${dest}` : dest;
+    } else {
+        notation = piece.toUpperCase() + (captured ? 'x' : '') + dest;
+    }
+    if (check) notation += '+';
+    return notation;
+}
+
+function recordMove(sr, sc, dr, dc, piece, captured, check) {
+    moveHistory.push(toAlgebraic(sr, sc, dr, dc, piece, captured, check));
+    updateMoveList();
+}
+
+function updateMoveList() {
+    const list = document.getElementById('moveList');
+    if (!list) return;
+    list.innerHTML = '';
+    for (let i = 0; i < moveHistory.length; i += 2) {
+        const li = document.createElement('li');
+        const white = moveHistory[i] || '';
+        const black = moveHistory[i + 1] || '';
+        li.textContent = `${Math.floor(i / 2) + 1}. ${white} ${black}`.trim();
+        list.appendChild(li);
+    }
+    list.scrollTop = list.scrollHeight;
+}
+
+function exportPGN() {
+    let pgn = '';
+    for (let i = 0; i < moveHistory.length; i += 2) {
+        const w = moveHistory[i] || '';
+        const b = moveHistory[i + 1] || '';
+        pgn += `${Math.floor(i / 2) + 1}. ${w} ${b} `;
+    }
+    const blob = new Blob([pgn.trim()], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'partida.pgn';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
 }
 
 /**
@@ -591,6 +653,16 @@ function scheduleAiMove() {
         setTimeout(aiMove, 300);
     }
 }
+glowInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--glow-intensity', `${glowInput.value}px`);
+});
+
+saturationInput.addEventListener('input', () => {
+    document.documentElement.style.setProperty('--neon-s', `${saturationInput.value}%`);
+});
+
+const exportBtn = document.getElementById('exportPGN');
+if (exportBtn) exportBtn.addEventListener('click', exportPGN);
 
 initBoard();
 createBoard();
@@ -600,3 +672,4 @@ updateCapturedDisplay();
 updateTimer();
 updateViewIndicator();
 scheduleAiMove();
+updateMoveList();
