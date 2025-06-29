@@ -105,6 +105,11 @@ h1 {
     display: none;
 }
 
+.views {
+    margin-top: 5px;
+    color: var(--neon-color);
+}
+
 .last-move {
     animation: flash 0.4s ease;
 }
