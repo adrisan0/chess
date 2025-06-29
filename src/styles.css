@@ -5,6 +5,10 @@
     --glow-intensity: 15px;
     --neon-color: hsl(var(--neon-h), var(--neon-s), var(--neon-l));
     --piece-size: 48px;
+    --light-square-color: #1d1f21;
+    --dark-square-color: #111111;
+    --white-piece-color: #ffffff;
+    --black-piece-color: #bbbbbb;
 }
 
 body {
@@ -45,14 +49,24 @@ body {
     vertical-align: middle;
 }
 
+.white-piece {
+    color: var(--white-piece-color);
+}
 
-.light {
-    background-color: #1d1f21;
+.black-piece {
+    color: var(--black-piece-color);
 }
 
 
+
+.light {
+    background-color: var(--light-square-color);
+}
+
+
+
 .dark {
-    background-color: #111111;
+    background-color: var(--dark-square-color);
 }
 
 .highlight {
@@ -163,4 +177,29 @@ h1 {
 
 .moves button {
     margin-top: 10px;
+}
+
+/* Theme definitions */
+body.theme-neon {
+    --light-square-color: #1d1f21;
+    --dark-square-color: #111111;
+    --white-piece-color: #ffffff;
+    --black-piece-color: #bbbbbb;
+    background-color: #0d1117;
+}
+
+body.theme-classic {
+    --light-square-color: #f0d9b5;
+    --dark-square-color: #b58863;
+    --white-piece-color: #ffffff;
+    --black-piece-color: #000000;
+    background-color: #f5f5dc;
+}
+
+body.theme-contrast {
+    --light-square-color: #ffffff;
+    --dark-square-color: #000000;
+    --white-piece-color: #ffffff;
+    --black-piece-color: #000000;
+    background-color: #333333;
 }

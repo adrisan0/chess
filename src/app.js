@@ -5,6 +5,7 @@ const pieceSizeInput = document.getElementById('pieceSize');
 const neonInput = document.getElementById('neonBrightness');
 const glowInput = document.getElementById('glowIntensity');
 const saturationInput = document.getElementById('neonSaturation');
+const themeSelect = document.getElementById('themeSelect');
 
 // Board state and view configuration
 
@@ -96,9 +97,13 @@ function renderBoard() {
             const square = getSquareElement(row, col);
             const pieceEl = square.querySelector('.piece');
             pieceEl.textContent = '';
+            pieceEl.classList.remove('white-piece','black-piece');
             square.classList.remove('highlight','attack','danger','check','last-move');
             const piece = board[row][col];
-            if (piece) pieceEl.textContent = PIECES[piece];
+            if (piece) {
+                pieceEl.textContent = PIECES[piece];
+                pieceEl.classList.add(isWhite(piece) ? 'white-piece' : 'black-piece');
+            }
             pieceEl.draggable = !!piece && isWhite(piece) === isWhiteTurn();
         }
     }
@@ -398,6 +403,7 @@ function animateMove(sr, sc, dr, dc, piece) {
 
     const anim = document.createElement('div');
     anim.classList.add('anim-piece');
+    anim.classList.add(isWhite(piece) ? 'white-piece' : 'black-piece');
     anim.textContent = PIECES[piece];
     anim.style.left = (fromRect.left - boardRect.left) + 'px';
     anim.style.top = (fromRect.top - boardRect.top) + 'px';
@@ -487,8 +493,14 @@ function isKingInCheck(forWhite){
 }
 
 function updateCapturedDisplay() {
-    document.getElementById('capturedWhite').textContent = capturedWhite.map(p => PIECES[p]).join(' ');
-    document.getElementById('capturedBlack').textContent = capturedBlack.map(p => PIECES[p]).join(' ');
+    const whiteEl = document.getElementById('capturedWhite');
+    const blackEl = document.getElementById('capturedBlack');
+    whiteEl.innerHTML = capturedWhite
+        .map(p => `<span class="${isWhite(p) ? 'white-piece' : 'black-piece'}">${PIECES[p]}</span>`)
+        .join(' ');
+    blackEl.innerHTML = capturedBlack
+        .map(p => `<span class="${isWhite(p) ? 'white-piece' : 'black-piece'}">${PIECES[p]}</span>`)
+        .join(' ');
 }
 
 function formatTime(sec) {
@@ -660,6 +672,16 @@ glowInput.addEventListener('input', () => {
 saturationInput.addEventListener('input', () => {
     document.documentElement.style.setProperty('--neon-s', `${saturationInput.value}%`);
 });
+
+function applyTheme(theme) {
+    document.body.classList.remove('theme-neon', 'theme-classic', 'theme-contrast');
+    document.body.classList.add(`theme-${theme}`);
+}
+
+if (themeSelect) {
+    themeSelect.addEventListener('change', () => applyTheme(themeSelect.value));
+    applyTheme(themeSelect.value);
+}
 
 const exportBtn = document.getElementById('exportPGN');
 if (exportBtn) exportBtn.addEventListener('click', exportPGN);

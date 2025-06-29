@@ -1,6 +1,6 @@
 # Ajedrez Didáctico
 
-Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora cuenta con un tema oscuro de estilo neón para una experiencia moderna y agradable a la vista. Los movimientos se animan suavemente y se resalta la última jugada para seguir mejor el desarrollo de la partida.
+Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora se incluyen varios temas visuales —neón oscuro, clásico y alto contraste— para distinguir mejor entre piezas blancas y negras. Los movimientos se animan suavemente y se resalta la última jugada para seguir mejor el desarrollo de la partida.
 
 ## Uso
 
@@ -30,7 +30,8 @@ Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
 - El tamaño de las piezas mediante un control deslizante (por defecto ahora se
   muestran más grandes).
 - El brillo del color neón del tema oscuro.
-- Dentro del submenú **Iluminación** puedes ajustar:
+- Elegir el tema visual entre neón oscuro (por defecto), clásico o alto contraste.
+  - Dentro del submenú **Iluminación** puedes ajustar:
   - La intensidad del resplandor que rodea tablero y resaltados.
   - La saturación del color neón.
 
