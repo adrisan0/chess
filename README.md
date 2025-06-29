@@ -6,7 +6,7 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
 
 1. Abre `index.html` en tu navegador.
 2. Presiona las teclas numéricas (1 a 4) para alternar cada modo de vista. Puedes combinarlos:
-   - **1**: muestra los movimientos disponibles al seleccionar una pieza.
+   - **1**: muestra los movimientos disponibles al seleccionar o pasar el ratón sobre una pieza.
    - **2**: resalta las casillas atacadas por la pieza seleccionada.
    - **3**: señala nuestras piezas en peligro.
    - **4**: indica las casillas desde las que podemos dar jaque.
@@ -23,7 +23,8 @@ La partida se juega haciendo clic o arrastrando las piezas hasta su destino. El 
 
 Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
 
-- El tamaño de las piezas mediante un control deslizante.
+- El tamaño de las piezas mediante un control deslizante (por defecto ahora se
+  muestran más grandes).
 - El brillo del color neón del tema oscuro.
 
 * **Capturas**: al mover a una casilla ocupada por una pieza rival, dicha pieza
