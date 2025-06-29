@@ -15,6 +15,15 @@
     <div id="info" class="info">
         <p>Presiona 1 para ver movimientos, 2 para ver casillas atacadas, 3 para ver casillas propias en peligro, 4 para ver jaques posibles.</p>
     </div>
+    <button id="settingsToggle">Ajustes</button>
+    <div id="settingsMenu" class="settings hidden">
+        <label>Tamaño de pieza
+            <input type="range" id="pieceSize" min="24" max="72" value="32">
+        </label>
+        <label>Brillo neón
+            <input type="range" id="neonBrightness" min="30" max="70" value="55">
+        </label>
+    </div>
     <script src="src/app.js"></script>
 </body>
 </html>
