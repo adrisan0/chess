@@ -15,7 +15,7 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
    representan cada vista activa para saber en todo momento qué opciones están
    habilitadas.
  
-La partida se juega haciendo clic o arrastrando las piezas hasta su destino. El turno comienza con blancas. En todo momento se muestran las piezas capturadas y un contador de tiempo para cada bando.
+Al cargar la página se pregunta con qué color quieres jugar. El adversario mueve de forma automática tras cada una de tus jugadas. La partida se juega haciendo clic o arrastrando las piezas hasta su destino y se muestran las piezas capturadas junto con un contador de tiempo para cada bando.
 
 ## Reglas de juego
 

@@ -18,6 +18,7 @@ let capturedBlack = [];
 let whiteTime = 0;
 let blackTime = 0;
 let timerId = null;
+let playerIsWhite = true; // true if human plays white
 let moveHistory = [];
 
 const PIECES = {
@@ -138,6 +139,7 @@ function onSquareClick(e) {
     if (selected) {
         if (movePiece(selected.row, selected.col, row, col)) {
             selected = null;
+            scheduleAiMove();
         } else if (
             piece &&
             isSameColor(piece, board[selected.row][selected.col]) &&
@@ -178,6 +180,7 @@ function onDrop(e) {
     const dc = parseInt(e.currentTarget.dataset.col);
     if (movePiece(sr, sc, dr, dc)) {
         selected = null;
+        scheduleAiMove();
     } else {
         renderBoard();
     }
@@ -617,6 +620,39 @@ neonInput.addEventListener('input', () => {
     document.documentElement.style.setProperty('--neon-l', `${neonInput.value}%`);
 });
 
+/**
+ * Perform a move for the computer side.
+ * Selects randomly among all legal moves of the side to move.
+ */
+function aiMove() {
+    const moves = [];
+    for (let r = 0; r < 8; r++) {
+        for (let c = 0; c < 8; c++) {
+            const piece = board[r][c];
+            if (piece && isWhite(piece) === isWhiteTurn() &&
+                ((isWhiteTurn() && !playerIsWhite) || (!isWhiteTurn() && playerIsWhite))) {
+                const legal = legalMoves(r, c);
+                for (const [dr, dc] of legal) {
+                    moves.push({ sr: r, sc: c, dr, dc });
+                }
+            }
+        }
+    }
+    if (moves.length === 0) return;
+    const m = moves[Math.floor(Math.random() * moves.length)];
+    movePiece(m.sr, m.sc, m.dr, m.dc);
+    selected = null;
+    scheduleAiMove();
+}
+
+/**
+ * Schedule an AI move if it is the computer's turn.
+ */
+function scheduleAiMove() {
+    if ((turn && !playerIsWhite) || (!turn && playerIsWhite)) {
+        setTimeout(aiMove, 300);
+    }
+}
 glowInput.addEventListener('input', () => {
     document.documentElement.style.setProperty('--glow-intensity', `${glowInput.value}px`);
 });
@@ -630,7 +666,10 @@ if (exportBtn) exportBtn.addEventListener('click', exportPGN);
 
 initBoard();
 createBoard();
+const playWhite = window.confirm('¿Quieres jugar con blancas?\nAceptar: blancas, Cancelar: negras');
+playerIsWhite = playWhite;
 updateCapturedDisplay();
 updateTimer();
 updateViewIndicator();
+scheduleAiMove();
 updateMoveList();
