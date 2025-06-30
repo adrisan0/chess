@@ -393,8 +393,10 @@ function executeMove(sr, sc, dr, dc) {
 
 /**
  * Animate a piece move from source to destination.
+ * If `captured` is provided, a celebration effect is shown
+ * on the destination square when the animation ends.
  */
-function animateMove(sr, sc, dr, dc, piece) {
+function animateMove(sr, sc, dr, dc, piece, captured) {
     const fromSquare = getSquareElement(sr, sc);
     const toSquare = getSquareElement(dr, dc);
     const boardRect = boardElement.getBoundingClientRect();
@@ -415,14 +417,31 @@ function animateMove(sr, sc, dr, dc, piece) {
     toSquare.querySelector('.piece').textContent = '';
 
     requestAnimationFrame(() => {
+        anim.classList.add('epic');
         anim.style.left = (toRect.left - boardRect.left) + 'px';
         anim.style.top = (toRect.top - boardRect.top) + 'px';
     });
 
     anim.addEventListener('transitionend', () => {
         anim.remove();
+        if (captured) showCaptureCelebration(toSquare);
         renderBoard();
     });
+}
+
+/**
+ * Show a short celebration animation when a capture occurs.
+ */
+function showCaptureCelebration(square) {
+    const boardRect = boardElement.getBoundingClientRect();
+    const rect = square.getBoundingClientRect();
+    const effect = document.createElement('div');
+    effect.classList.add('capture-celebration');
+    effect.textContent = '🎉';
+    effect.style.left = (rect.left - boardRect.left + rect.width / 2) + 'px';
+    effect.style.top = (rect.top - boardRect.top + rect.height / 2) + 'px';
+    boardElement.appendChild(effect);
+    effect.addEventListener('animationend', () => effect.remove());
 }
 
 /**
@@ -434,7 +453,7 @@ function movePiece(sr, sc, dr, dc) {
     if (!result.valid) return false;
     lastMove = { from: [sr, sc], to: [dr, dc] };
     recordMove(sr, sc, dr, dc, piece, result.captured, result.check);
-    animateMove(sr, sc, dr, dc, piece);
+    animateMove(sr, sc, dr, dc, piece, result.captured);
     return true;
 }
 

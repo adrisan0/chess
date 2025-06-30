@@ -1,6 +1,6 @@
 # Ajedrez Didáctico
 
-Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora se incluyen varios temas visuales —neón oscuro, clásico y alto contraste— para distinguir mejor entre piezas blancas y negras. Los movimientos se animan suavemente y se resalta la última jugada para seguir mejor el desarrollo de la partida.
+Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora se incluyen varios temas visuales —neón oscuro, clásico y alto contraste— para distinguir mejor entre piezas blancas y negras. Los movimientos cuentan con una animación más épica y, al capturar una pieza, aparece brevemente una celebración. También se resalta la última jugada para seguir mejor el desarrollo de la partida.
 
 ## Uso
 
