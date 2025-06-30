@@ -431,8 +431,13 @@ function animateMove(sr, sc, dr, dc, piece, captured) {
 
 /**
  * Show a short celebration animation when a capture occurs.
+ * Uses a canvas-based fire effect when available.
  */
 function showCaptureCelebration(square) {
+    if (typeof showFireEffect === 'function') {
+        showFireEffect(square);
+        return;
+    }
     const boardRect = boardElement.getBoundingClientRect();
     const rect = square.getBoundingClientRect();
     const effect = document.createElement('div');
