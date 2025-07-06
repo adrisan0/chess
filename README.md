@@ -1,6 +1,6 @@
 # Ajedrez Didáctico
 
-Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora se incluyen varios temas visuales —neón oscuro, clásico y alto contraste— para distinguir mejor entre piezas blancas y negras. Los movimientos cuentan con una animación más épica y, al capturar una pieza, aparece brevemente una celebración con un efecto de fuego generado en canvas. También se resalta la última jugada para seguir mejor el desarrollo de la partida.
+Esta aplicación web permite jugar al ajedrez con diferentes modos de visualización para ayudar al aprendizaje. Ahora se incluyen varios temas visuales —neón oscuro, clásico y alto contraste— para distinguir mejor entre piezas blancas y negras. Los movimientos cuentan con una animación más épica y, al capturar una pieza, aparece brevemente una celebración con un efecto de fuego generado en canvas. También se resalta la última jugada para seguir mejor el desarrollo de la partida. Las piezas muestran ahora un contorno sutil para distinguir mejor las blancas de las negras incluso con casillas resaltadas.
 
 ## Uso
 
@@ -15,7 +15,7 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
    representan cada vista activa para saber en todo momento qué opciones están
    habilitadas.
  
-Al cargar la página se pregunta con qué color quieres jugar. El adversario mueve de forma automática tras cada una de tus jugadas. La partida se juega haciendo clic o arrastrando las piezas hasta su destino y se muestran las piezas capturadas junto con un contador de tiempo para cada bando.
+Al cargar la página se pregunta con qué color quieres jugar. El adversario analiza las jugadas legales usando heurísticas básicas —capturas, amenazas y jaques— y mueve de forma automática tras cada una de tus jugadas. La partida se juega haciendo clic o arrastrando las piezas hasta su destino y se muestran las piezas capturadas junto con un contador de tiempo para cada bando.
 
 ## Reglas de juego
 
@@ -48,3 +48,8 @@ Usa el botón **Ajustes** para abrir un panel donde puedes modificar:
 
 Debajo del tablero se muestra una lista con todas las jugadas realizadas en notación algebraica.
 Un botón permite exportar la partida en formato PGN para analizarla con otros programas.
+
+## Pruebas
+
+Se incluye un pequeño conjunto de pruebas para comprobar la lógica básica de puntuación del bot.
+Ejecuta `node tests/evaluateMove.test.js` desde la raíz del proyecto.
