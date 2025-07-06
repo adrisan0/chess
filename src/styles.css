@@ -8,7 +8,7 @@
     --light-square-color: #1d1f21;
     --dark-square-color: #111111;
     --white-piece-color: #ffffff;
-    --black-piece-color: #bbbbbb;
+    --black-piece-color: #222222;
 }
 
 body {
@@ -51,10 +51,12 @@ body {
 
 .white-piece {
     color: var(--white-piece-color);
+    text-shadow: 1px 1px 2px #000000;
 }
 
 .black-piece {
     color: var(--black-piece-color);
+    text-shadow: 1px 1px 2px #ffffff;
 }
 
 
@@ -190,7 +192,7 @@ body.theme-neon {
     --light-square-color: #1d1f21;
     --dark-square-color: #111111;
     --white-piece-color: #ffffff;
-    --black-piece-color: #bbbbbb;
+    --black-piece-color: #222222;
     background-color: #0d1117;
 }
 

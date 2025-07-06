@@ -37,6 +37,8 @@ const PIECES = {
     'K': '♔'
 };
 
+const { pieceValue, evaluateMove: coreEvaluateMove } = AICore;
+
 // Icon and color definition for each view mode
 const VIEW_ICONS = {
     1: '🔍', // Mostrar movimientos posibles
@@ -657,16 +659,36 @@ neonInput.addEventListener('input', () => {
 });
 
 /**
+ * Score a potential move using simple heuristics.
+ * Rewards captures, checks and new threats while
+ * penalising moves that leave the piece en prise.
+ */
+function evaluateMove(sr, sc, dr, dc) {
+    return coreEvaluateMove(
+        board,
+        { isWhite, isKingInCheck, generateAttacks, allAttackedSquares },
+        sr,
+        sc,
+        dr,
+        dc,
+        enPassant
+    );
+}
+
+/**
  * Perform a move for the computer side.
- * Selects randomly among all legal moves of the side to move.
+ * Selects the legal move with the highest heuristic score.
  */
 function aiMove() {
     const moves = [];
     for (let r = 0; r < 8; r++) {
         for (let c = 0; c < 8; c++) {
             const piece = board[r][c];
-            if (piece && isWhite(piece) === isWhiteTurn() &&
-                ((isWhiteTurn() && !playerIsWhite) || (!isWhiteTurn() && playerIsWhite))) {
+            if (
+                piece &&
+                isWhite(piece) === isWhiteTurn() &&
+                ((isWhiteTurn() && !playerIsWhite) || (!isWhiteTurn() && playerIsWhite))
+            ) {
                 const legal = legalMoves(r, c);
                 for (const [dr, dc] of legal) {
                     moves.push({ sr: r, sc: c, dr, dc });
@@ -675,8 +697,16 @@ function aiMove() {
         }
     }
     if (moves.length === 0) return;
-    const m = moves[Math.floor(Math.random() * moves.length)];
-    movePiece(m.sr, m.sc, m.dr, m.dc);
+    let bestMove = moves[0];
+    let bestScore = -Infinity;
+    for (const m of moves) {
+        const score = evaluateMove(m.sr, m.sc, m.dr, m.dc);
+        if (score > bestScore) {
+            bestScore = score;
+            bestMove = m;
+        }
+    }
+    movePiece(bestMove.sr, bestMove.sc, bestMove.dr, bestMove.dc);
     selected = null;
     scheduleAiMove();
 }
