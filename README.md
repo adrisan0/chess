@@ -51,7 +51,7 @@ Un botón permite exportar la partida en formato PGN para analizarla con otros p
 
 ## Visualización de datos
 
-El archivo `data-viz.html` ofrece estadísticas detalladas de tus partidas. Incluye gráficas de rachas ganadoras y perdedoras, análisis según descanso entre partidas y un listado de aperturas que puede filtrarse por color. Las gráficas de winrate muestran una línea con la media global de victorias para comparar cada categoría con tu rendimiento general. Pulsa la tecla `d` y aparecerá un círculo alrededor del cursor; además, se iluminará el borde del contenedor bajo el puntero. Al hacer clic en cualquier elemento informativo, DeepSeek describirá esa sección y te dará un consejo para mejorar en ajedrez.
+El archivo `data-viz.html` ofrece estadísticas detalladas de tus partidas. Incluye gráficas de rachas ganadoras y perdedoras, análisis según descanso entre partidas y un listado de aperturas que puede filtrarse por color. Las gráficas de winrate muestran una línea con la media global de victorias para comparar cada categoría con tu rendimiento general. Pulsa la tecla `d` y aparecerá un círculo alrededor del cursor; además, se iluminará el borde del contenedor bajo el puntero. Al hacer clic en cualquier elemento informativo, DeepSeek describirá esa sección, mostrará un consejo en un popup junto al ratón y lo añadirá también al chat. El análisis funciona tanto en recuadros de texto como en las gráficas interactivas.
 
 ## Pruebas
 

@@ -1467,17 +1467,32 @@
         if(input) input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
 
         /**
-         * Request a DeepSeek comment about a given section element.
+         * Request a DeepSeek comment about a given section element and show
+         * a temporary popup near the last mouse position.
          * @param {HTMLElement} el Target element to describe.
+         * @param {{x:number,y:number}} [pos] Mouse coordinates for the popup.
          */
-        window.commentSection = async function(el){
+        window.commentSection = async function(el, pos){
           if(!el) return;
-          const txt = (el.innerText||'').trim().replace(/\s+/g,' ').slice(0,400);
+          let txt = '';
+          if(el.tagName === 'CANVAS'){
+            const chart = Chart.getChart(el);
+            if(chart){
+              const title = chart.options?.plugins?.title?.text || 'chart';
+              const labels = chart.data.labels?.slice(0,5) || [];
+              const data = chart.data.datasets?.[0]?.data || [];
+              const avg = data.length ? (data.reduce((a,b)=>a+b,0)/data.length).toFixed(2) : null;
+              const pairs = labels.map((l,i)=>`${l}:${data[i]}`).join(', ');
+              txt = `${title}. ${pairs}${avg?`. Average ${avg}`:''}`;
+            }
+          } else {
+            txt = (el.innerText||'').trim().replace(/\s+/g,' ').slice(0,400);
+          }
           if(!txt) return;
           const typing = showTyping();
           try{
             let ans;
-            const prompt = `Describe briefly this section: "${txt}". Provide a chess improvement tip related to these data.`;
+            const prompt = `You are a chess coach. Analyze this data: "${txt}" and give a brief insight with an improvement tip.`;
             if(useEl?.checked){
               ans = await askDeepseekLLM(prompt, ctx, {
                 base:(apiBaseEl?.value||'').trim(),
@@ -1489,6 +1504,7 @@
             }
             typing.remove();
             append('bot', ans || 'Sin respuesta del LLM.');
+            if(ans) showDsPopup(ans, pos||{x:0,y:0});
           }catch(e){
             console.warn(e);
             typing.remove();
@@ -2381,6 +2397,7 @@
       // Hold 'd' and click to request a DeepSeek comment on the clicked section
       let deepseekHeld = false;
       let dsCursor;
+      let dsPopup;
       let lastMouse = { x: 0, y: 0 };
       let dsHighlightEl;
       const DS_TARGET_SELECTOR = '.card, canvas, table, .panel';
@@ -2431,6 +2448,23 @@
         dsCursor = null;
       }
 
+      function showDsPopup(text, pos){
+        hideDsPopup();
+        dsPopup = document.createElement('div');
+        dsPopup.id = 'deepseek-popup';
+        dsPopup.textContent = text;
+        dsPopup.style.left = (pos.x + 16) + 'px';
+        dsPopup.style.top = (pos.y + 16) + 'px';
+        document.body.appendChild(dsPopup);
+        setTimeout(hideDsPopup, 5000);
+      }
+
+      function hideDsPopup(){
+        if(!dsPopup) return;
+        dsPopup.remove();
+        dsPopup = null;
+      }
+
       document.addEventListener('mousemove', trackMouse);
       document.addEventListener('keydown', e => {
         if (e.key === 'd' || e.key === 'D') {
@@ -2443,6 +2477,7 @@
         if (e.key === 'd' || e.key === 'D') {
           deepseekHeld = false;
           hideDsCursor();
+          hideDsPopup();
           if (dsHighlightEl) {
             dsHighlightEl.classList.remove('ds-highlight');
             dsHighlightEl = null;
@@ -2460,7 +2495,7 @@
         const target = e.target.closest(DS_TARGET_SELECTOR);
         if (target && window.commentSection) {
           e.preventDefault();
-          window.commentSection(target);
+          window.commentSection(target, lastMouse);
         }
       });
     </script>
@@ -2499,6 +2534,21 @@
         border-radius: 50%;
         z-index: 1000;
         animation: dsPulse 1s infinite ease-in-out;
+      }
+
+      #deepseek-popup{
+        position: fixed;
+        max-width: 240px;
+        pointer-events: none;
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        border: 1px solid #3aa1ff;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.3;
+        color: var(--text);
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,.3);
       }
 
       @keyframes dsPulse{
