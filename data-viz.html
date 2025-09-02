@@ -6,6 +6,7 @@
     <title>Chess.com - Analizador de Usuario</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="icon" href="data:,">
     <style>
       :root{
         --bg:#0f1221;
@@ -386,6 +387,12 @@
       const $ = sel => document.querySelector(sel);
       const fmt = new Intl.NumberFormat('es-ES');
       const pct = v => (isFinite(v)? (v*100).toFixed(1)+'%':'—');
+
+      // Compute API base; if served from file:// use local proxy to avoid cross-origin errors
+      const defaultApiBase = () =>
+        (typeof location !== 'undefined' && location.protocol === 'file:')
+          ? 'http://localhost:8787/api/deepseek'
+          : '/api/deepseek';
 
       // API Chess.com
       const API = {
@@ -1405,7 +1412,7 @@
 
         // Load/save settings
         try {
-          apiBaseEl.value = localStorage.getItem('ds_api_base') || '/api/deepseek';
+          apiBaseEl.value = localStorage.getItem('ds_api_base') || defaultApiBase();
           modelEl.value = localStorage.getItem('ds_model') || 'deepseek-chat';
           useEl.checked = (localStorage.getItem('ds_use')||'false') === 'true';
           // Never auto-fill key into DOM value for safety; only keep in memory if present
@@ -2251,7 +2258,7 @@
           const apiKeyEl = document.getElementById('dsApiKey');
           const modelEl = document.getElementById('dsModel');
           const use = (localStorage.getItem('ds_use')||'false')==='true';
-          const base = apiBaseEl?.value?.trim() || '/api/deepseek';
+        const base = apiBaseEl?.value?.trim() || defaultApiBase();
           const key = apiKeyEl?.value?.trim() || '';
           const model = modelEl?.value || 'deepseek-chat';
 
@@ -2277,7 +2284,7 @@
         try{
           const sys = 'Eres un analista de rendimiento de ajedrez. Resume en español en 2-4 frases qué sugiere cada variable sobre el rendimiento del jugador. Sé conciso y claro.';
           const usr = `Variable: ${name}. Datos agregados: ${JSON.stringify(payload)}`;
-          const url = (base||'/api/deepseek').replace(/\/$/,'') + '/chat/completions';
+          const url = (base||defaultApiBase()).replace(/\/$/,'') + '/chat/completions';
           const body = { model: model||'deepseek-chat', messages: [ {role:'system', content: sys}, {role:'user', content: usr} ], temperature: 0.2 };
           const digest = stableHash(JSON.stringify({name,payload}));
           const ck = 'explain:'+ (model||'deepseek-chat') + ':' + digest;

@@ -4,8 +4,9 @@ Esta aplicación web permite jugar al ajedrez con diferentes modos de visualizac
 
 ## Uso
 
-1. Abre `index.html` en tu navegador.
-2. Presiona las teclas numéricas (1 a 4) para alternar cada modo de vista. Puedes combinarlos:
+1. En una terminal, ejecuta `cd server && npm install && npm start` para iniciar el proxy local.
+2. Abre `http://localhost:8787` en tu navegador.
+3. Presiona las teclas numéricas (1 a 4) para alternar cada modo de vista. Puedes combinarlos:
    - **1**: muestra los movimientos disponibles al seleccionar o pasar el ratón sobre una pieza.
    - **2**: resalta las casillas atacadas por la pieza seleccionada.
    - **3**: señala nuestras piezas en peligro.
