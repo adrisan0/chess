@@ -180,16 +180,30 @@
     return h.toString(16);
   }
 
+  /**
+   * Analyze a game PGN and compute average centipawn loss for both sides.
+   * @returns {{averageCentipawnLoss:number|null, white:number|null, black:number|null}}
+   */
   async function analyzeGamePrecision(pgn, {depth=12, engineFactory}={}){
     const key = 'gp_acl_' + hashStr(pgn||'');
     try{
       if(typeof localStorage !== 'undefined'){
         const cached = localStorage.getItem(key);
         if(cached != null){
-          return { averageCentipawnLoss: JSON.parse(cached) };
+          const obj = JSON.parse(cached);
+          if(typeof obj === 'number'){
+            return { averageCentipawnLoss: obj, white: obj, black: obj };
+          }
+          if(obj && typeof obj === 'object'){
+            const w = obj.white ?? obj.w ?? null;
+            const b = obj.black ?? obj.b ?? null;
+            const avg = (typeof w==='number' && typeof b==='number') ? (w + b) / 2 : (obj.avg ?? null);
+            return { averageCentipawnLoss: avg, white: w, black: b };
+          }
         }
       }
     }catch{}
+
     const movesSan = extractMovesSAN(pgn).map(normalizeSAN);
     const movesUci = sanToUciSequence(movesSan);
     const factory = engineFactory || tryCreateEngine;
@@ -197,6 +211,8 @@
     if(!engine) throw new Error('Stockfish engine not available');
     await initEngine(engine);
     let lossSum = 0; let count = 0;
+    let lossW = 0; let cntW = 0;
+    let lossB = 0; let cntB = 0;
     for(let i=0;i<movesUci.length;i++){
       const prefix = movesUci.slice(0,i);
       const best = await evalPosition(engine, prefix, depth);
@@ -204,15 +220,18 @@
       const actual = (i%2===0) ? actualOpp : -actualOpp;
       const loss = Math.max(0, best - actual);
       lossSum += loss; count++;
+      if(i%2===0){ lossW += loss; cntW++; } else { lossB += loss; cntB++; }
     }
     if(engine.terminate) try{engine.terminate();}catch{}
     const avg = count? lossSum/count : null;
+    const avgW = cntW? lossW/cntW : null;
+    const avgB = cntB? lossB/cntB : null;
     try{
       if(typeof localStorage !== 'undefined'){
-        localStorage.setItem(key, JSON.stringify(avg));
+        localStorage.setItem(key, JSON.stringify({white: avgW, black: avgB}));
       }
     }catch{}
-    return { averageCentipawnLoss: avg };
+    return { averageCentipawnLoss: avg, white: avgW, black: avgB };
   }
 
   const api = { analyzeGamePrecision, sanToUciSequence };

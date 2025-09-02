@@ -135,8 +135,9 @@
         const norms = moves.map(normalizeSAN);
         if(globalThis.GamePrecision && typeof globalThis.GamePrecision.analyzeGamePrecision === 'function'){
           try{
-            const { averageCentipawnLoss } = await globalThis.GamePrecision.analyzeGamePrecision(g.pgn||'');
-            g.precision = averageCentipawnLoss;
+            const res = await globalThis.GamePrecision.analyzeGamePrecision(g.pgn||'');
+            g.precision = meColor==='white' ? res.white : res.black;
+            g.oppPrecision = meColor==='white' ? res.black : res.white;
           }catch{}
         }
         for(let i=0;i<moves.length;i++){

@@ -28,6 +28,8 @@ function stubEngine(cps){
   const engineFactory = () => stubEngine(cps);
   const res = await analyzeGamePrecision(pgn, {depth:1, engineFactory});
   assert(Math.abs(res.averageCentipawnLoss - 25) < 1e-9);
+  assert(Math.abs(res.white - 7.5) < 1e-9);
+  assert(Math.abs(res.black - 42.5) < 1e-9);
 })();
 
 (async function testCaching(){

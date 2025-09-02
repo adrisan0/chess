@@ -205,6 +205,8 @@
                 <th>Empates</th>
                 <th>Derrotas</th>
                 <th>% Victorias</th>
+                <th>Prec. propia</th>
+                <th>Prec. rival</th>
               </tr></thead>
               <tbody></tbody>
             </table>
@@ -215,6 +217,21 @@
             <div class="row"><h2>Rendimiento por color</h2><div class="spacer"></div></div>
             <canvas id="byColor"></canvas>
           </div>
+        </div>
+
+        <div class="panel">
+          <div class="row"><h2>Partidas</h2><div class="spacer"></div></div>
+          <table class="table" id="gamesTable">
+            <thead><tr>
+              <th>Fecha</th>
+              <th>Apertura</th>
+              <th>Color</th>
+              <th>Resultado</th>
+              <th>Prec. propia</th>
+              <th>Prec. rival</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
         </div>
 
         <div class="panel">
@@ -603,15 +620,17 @@
         const openings = new Map();
         for(const g of data){
           const key = `${g.eco||'—'}|${g.opening||'—'}|${g.meColor}`;
-          if(!openings.has(key)) openings.set(key,{eco:g.eco||'—', opening:g.opening||'—', color:g.meColor, games:0,w:0,d:0,l:0, sample: (g.movesSAN||[]) });
+          if(!openings.has(key)) openings.set(key,{eco:g.eco||'—', opening:g.opening||'—', color:g.meColor, games:0,w:0,d:0,l:0, sample: (g.movesSAN||[]), prec:0, oppPrec:0 });
           const o = openings.get(key);
           if((o.sample?.length||0)===0 && (g.movesSAN?.length||0)>0) o.sample = g.movesSAN;
           o.games++;
           const r = normalizeResult(g.result, g.meColor);
           o[r]++;
+          if(typeof g.precision === 'number') o.prec += g.precision;
+          if(typeof g.oppPrecision === 'number') o.oppPrec += g.oppPrecision;
         }
         const openingsArr = [...openings.values()].filter(o=>o.games>=5).map(o=>({
-          ...o, winrate: o.games? o.w/o.games:0
+          ...o, winrate: o.games? o.w/o.games:0, mePrecision: o.games? o.prec/o.games:null, oppPrecision: o.games? o.oppPrec/o.games:null
         })).sort((a,b)=> b.winrate - a.winrate || b.games - a.games).slice(0,25);
 
         // Color
@@ -1020,6 +1039,9 @@
 
         // Aperturas
         renderOpeningsSection(agg);
+
+        // Tabla de partidas
+        renderGamesTable(agg);
       }
 
       function escapeHtml(s){
@@ -2347,7 +2369,9 @@
             <td><span class="pill win">${fmt.format(o.w)}</span></td>
             <td><span class="pill draw">${fmt.format(o.d)}</span></td>
             <td><span class="pill loss">${fmt.format(o.l)}</span></td>
-            <td>${(o.winrate*100).toFixed(1)}%</td>`;
+            <td>${(o.winrate*100).toFixed(1)}%</td>
+            <td>${o.mePrecision!=null?o.mePrecision.toFixed(1):'—'}</td>
+            <td>${o.oppPrecision!=null?o.oppPrecision.toFixed(1):'—'}</td>`;
           const nameCell = tr.querySelector('.opening-cell');
           nameCell.textContent = o.opening||'—';
           try{ nameCell.dataset.sample = JSON.stringify(o.sample||[]); }catch{ nameCell.dataset.sample='[]'; }
@@ -2399,6 +2423,38 @@
         insightsEl.appendChild(summary);
         insightsEl.appendChild(best);
         insightsEl.appendChild(worst);
+      }
+
+      /**
+       * Render table of individual games with precision stats.
+       * @param {Object} agg Aggregated dataset.
+       */
+      function renderGamesTable(agg){
+        const tbody = document.querySelector('#gamesTable tbody');
+        if(!tbody) return;
+        tbody.innerHTML = '';
+        const rows = agg.data.slice().sort((a,b)=> (b.endTime||0)-(a.endTime||0));
+        for(const g of rows){
+          const date = g.endTime ? new Date(g.endTime*1000).toISOString().slice(0,10) : '—';
+          const opening = g.opening || g.eco || '—';
+          const color = g.meColor==='white' ? 'Blancas' : 'Negras';
+          const r = normalizeResult(g.result, g.meColor);
+          const resTxt = r==='w'? 'Victoria' : r==='l'? 'Derrota' : 'Empate';
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>${date}</td>
+            <td>${escapeHtml(opening)}</td>
+            <td>${color}</td>
+            <td>${resTxt}</td>
+            <td>${g.precision!=null?g.precision.toFixed(1):'—'}</td>
+            <td>${g.oppPrecision!=null?g.oppPrecision.toFixed(1):'—'}</td>`;
+          if(g.url){
+            tr.style.cursor = 'pointer';
+            tr.addEventListener('click', () => { window.open(g.url, '_blank', 'noopener'); });
+          }
+          tbody.appendChild(tr);
+        }
+        attachOpeningsSorting(document.getElementById('gamesTable'));
       }
 
       // Hold 'd' and click to request a DeepSeek comment on the clicked section
