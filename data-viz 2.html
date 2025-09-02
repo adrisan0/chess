@@ -1,0 +1,2267 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Chess.com - Analizador de Usuario</title>
+    <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+    <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <style>
+      :root{
+        --bg:#0f1221;
+        --panel:#171a2c;
+        --panel-2:#1d2140;
+        --text:#e9ecff;
+        --muted:#a9b0d9;
+        --accent:#76baff;
+        --accent-2:#8be7a4;
+        --warn:#ffb86b;
+        --danger:#ff6b6b;
+        --grid-gap:14px;
+      }
+      *{box-sizing:border-box}
+      html,body{height:100%}
+      body{
+        margin:0; font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+        color:var(--text); background:linear-gradient(180deg,#0d1020,#10142a);
+      }
+      header{
+        position:sticky; top:0; z-index:5; background:rgba(13,16,32,.8); backdrop-filter: blur(6px);
+        border-bottom:1px solid #262a45; padding:10px 14px;
+      }
+      .toolbar{
+        display:grid; grid-template-columns: 1fr auto auto auto auto auto auto; gap:10px; align-items:center; max-width:1200px; margin:0 auto;
+      }
+      .toolbar .group{display:flex; gap:8px; align-items:center}
+      input, select, button{
+        background:var(--panel); color:var(--text); border:1px solid #2a315b; border-radius:8px; padding:10px 12px; font-size:14px;
+      }
+      input::placeholder{color:#7f86b2}
+      button{cursor:pointer}
+      button.primary{background:linear-gradient(180deg,#246bff,#1f57d6); border:0}
+      button.ghost{background:transparent; border:1px solid #2a315b}
+      .container{max-width:1200px; margin:18px auto; padding:0 14px}
+      .cards{display:grid; grid-template-columns: repeat(4, 1fr); gap:var(--grid-gap)}
+      .card{background:linear-gradient(180deg,var(--panel), var(--panel-2)); border-radius:14px; padding:14px; border:1px solid #262a45}
+      .card h3{margin:0 0 10px 0; font-size:14px; color:var(--muted); font-weight:600}
+      .big{font-size:28px; font-weight:700}
+      .muted{color:var(--muted)}
+      .grid{display:grid; gap:var(--grid-gap)}
+      .grid.cols-2{grid-template-columns: 1fr 1fr}
+      .grid.cols-3{grid-template-columns: 1fr 1fr 1fr}
+      .panel{background:linear-gradient(180deg,var(--panel), var(--panel-2)); border:1px solid #262a45; border-radius:14px; padding:14px}
+      .panel h2{margin:0 0 6px 0; font-size:18px}
+      .row{display:flex; gap:10px; align-items:center}
+      .spacer{flex:1}
+      .progress{height:8px; background:#1a2042; border-radius:999px; overflow:hidden; border:1px solid #2a315b}
+      .progress > div{height:100%; background:linear-gradient(90deg,#3aa1ff,#8be7a4); width:0}
+      .chips{display:flex; gap:6px; flex-wrap:wrap}
+      .chip{background:#1a2042; border:1px solid #2a315b; border-radius:999px; padding:6px 10px; font-size:12px}
+      .kpis{display:grid; grid-template-columns: repeat(6, 1fr); gap:var(--grid-gap)}
+      .table{width:100%; border-collapse:collapse}
+      .table th, .table td{padding:8px 10px; border-bottom:1px solid #262a45; text-align:left; font-size:13px}
+      .table th{color:var(--muted); font-weight:600}
+      .pill{padding:4px 8px; border-radius:999px; font-size:12px; border:1px solid #2a315b}
+      .pill.win{background:rgba(139,231,164,.1); color:#8be7a4}
+      .pill.loss{background:rgba(255,107,107,.1); color:#ff9f9f}
+      .pill.draw{background:rgba(255,184,107,.1); color:#ffce8b}
+      .footer{color:#8f95c7; font-size:12px; text-align:center; margin:24px 0}
+
+      @media (max-width: 1024px){
+        .cards{grid-template-columns: 1fr 1fr}
+        .kpis{grid-template-columns: 1fr 1fr 1fr}
+        .grid.cols-2{grid-template-columns: 1fr}
+      }
+      @media (max-width: 640px){
+        .toolbar{grid-template-columns: 1fr; gap:8px}
+        .cards{grid-template-columns: 1fr}
+        .kpis{grid-template-columns: 1fr 1fr}
+      }
+      .small{font-size:12px}
+      .legend{display:flex; gap:12px; align-items:center; flex-wrap:wrap}
+      .legend .dot{width:10px; height:10px; border-radius:50%}
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="toolbar">
+        <div class="group">
+          <input id="username" type="text" placeholder="Usuario de Chess.com (sin @)" />
+          <button id="loadBtn" class="primary">Cargar datos</button>
+          <button id="clearBtn" class="ghost" title="Borrar caché local de datos">Limpiar caché datos</button>
+          <button id="clearLLMBtn" class="ghost" title="Borrar caché de resúmenes LLM (puede aumentar uso de tokens)">Limpiar caché LLM</button>
+        </div>
+        <div class="group">
+          <label class="small muted">Modalidad</label>
+          <select id="modeFilter">
+            <option value="all">Todas</option>
+            <option value="bullet">Bullet</option>
+            <option value="blitz" selected>Blitz</option>
+            <option value="rapid">Rapid</option>
+            <option value="daily">Diaria</option>
+          </select>
+        </div>
+        <div class="group">
+          <label class="small muted">Rango</label>
+          <select id="rangeFilter">
+            <option value="all" selected>Todo el historial</option>
+            <option value="12m">Últimos 12 meses</option>
+            <option value="6m">Últimos 6 meses</option>
+            <option value="3m">Últimos 3 meses</option>
+          </select>
+        </div>
+        <div class="group">
+          <label class="small muted">Eje X</label>
+          <select id="xAxisMode">
+            <option value="games" selected>Nº partidas</option>
+            <option value="time">Fecha</option>
+            <option value="moves">Nº de movimientos</option>
+            <option value="duration">Duración (min)</option>
+          </select>
+        </div>
+        <div class="group">
+          <label class="small muted">Color</label>
+          <select id="colorMode">
+            <option value="mode" selected>Modalidad</option>
+            <option value="date">Fecha (gradiente)</option>
+          </select>
+          <label class="small muted">Corte</label>
+          <input id="gapDays" type="number" min="1" max="3650" value="14" style="width:70px">
+        </div>
+        <div class="group">
+          <label class="small muted">Concurrencia</label>
+          <select id="concurrency">
+            <option>4</option>
+            <option selected>8</option>
+            <option>12</option>
+          </select>
+        </div>
+        <div class="group">
+          <label class="small muted">Sesión (gap min)</label>
+          <input id="sessionGap" type="number" min="5" max="240" value="30" style="width:70px">
+        </div>
+        <div class="group">
+          <span id="status" class="small muted">Listo</span>
+        </div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="grid">
+        <div class="panel">
+          <div class="row" style="gap:12px; align-items:flex-start">
+            <div>
+              <h2 id="profileName">Perfil</h2>
+              <div class="chips">
+                <span id="playerCountry" class="chip">—</span>
+                <span id="playerJoined" class="chip">—</span>
+                <span id="playerFollowers" class="chip">— seguidores</span>
+              </div>
+            </div>
+            <div class="spacer"></div>
+            <div style="min-width:260px">
+              <div class="small muted" id="progressText">Esperando…</div>
+              <div class="progress" style="margin-top:6px"><div id="progressBar"></div></div>
+            </div>
+          </div>
+          <div class="cards" style="margin-top:12px">
+            <div class="card"><h3>Bullet</h3><div class="big" id="stat-bullet">—</div><div class="muted small" id="rec-bullet">—</div></div>
+            <div class="card"><h3>Blitz</h3><div class="big" id="stat-blitz">—</div><div class="muted small" id="rec-blitz">—</div></div>
+            <div class="card"><h3>Rapid</h3><div class="big" id="stat-rapid">—</div><div class="muted small" id="rec-rapid">—</div></div>
+            <div class="card"><h3>Diaria</h3><div class="big" id="stat-daily">—</div><div class="muted small" id="rec-daily">—</div></div>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="panel">
+            <div class="row"><h2 id="eloTitle">ELO vs número de partidas</h2>
+              <div class="spacer"></div>
+              <div class="legend small">
+                <span class="dot" style="background:#3aa1ff"></span> Blitz
+                <span class="dot" style="background:#8be7a4"></span> Rapid
+                <span class="dot" style="background:#ff9f9f"></span> Bullet
+                <span class="dot" style="background:#ffce8b"></span> Diaria
+              </div>
+            </div>
+            <canvas id="eloByGame"></canvas>
+          </div>
+          <div class="panel">
+            <div class="row"><h2>Resultados por modalidad</h2><div class="spacer"></div></div>
+            <canvas id="resultsByMode"></canvas>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="panel">
+            <div class="row"><h2>Top aperturas (por rendimiento)</h2><div class="spacer"></div></div>
+            <table class="table" id="openingsTable">
+              <thead><tr>
+                <th>Apertura</th>
+                <th>ECO</th>
+                <th>Color</th>
+                <th>Partidas</th>
+                <th>Victorias</th>
+                <th>Empates</th>
+                <th>Derrotas</th>
+                <th>% Victorias</th>
+              </tr></thead>
+              <tbody></tbody>
+            </table>
+            <div class="small muted" id="openingsNote" style="margin-top:8px">Mín. 5 partidas por apertura</div>
+          </div>
+
+          <div class="panel">
+            <div class="row"><h2>Rendimiento por color</h2><div class="spacer"></div></div>
+            <canvas id="byColor"></canvas>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="row"><h2>Insights de aperturas</h2><div class="spacer"></div></div>
+          <div id="openingInsights" class="grid"></div>
+        </div>
+
+        <div class="panel">
+          <div class="row"><h2>Asesor de aperturas (beta)</h2><div class="spacer"></div></div>
+          <div id="advisor" class="grid">
+            <div class="card" style="grid-column: 1 / -1">
+              <div class="muted small">Selecciona una apertura en la tabla para ver patrones útiles y penalizaciones. También puedes preguntar al asistente.</div>
+            </div>
+            <div class="card" id="llmSettings" style="grid-column: 1 / -1">
+              <div class="row" style="gap:8px; align-items:flex-end; flex-wrap:wrap">
+                <label class="small muted" style="display:flex; flex-direction:column">
+                  <span>API base</span>
+                  <input id="dsApiBase" type="text" placeholder="https://api.deepseek.com" style="min-width:260px" />
+                </label>
+                <label class="small muted" style="display:flex; flex-direction:column">
+                  <span>API key</span>
+                  <input id="dsApiKey" type="password" placeholder="sk-..." style="min-width:220px" />
+                </label>
+                <label class="small muted" style="display:flex; flex-direction:column">
+                  <span>Modelo</span>
+                  <select id="dsModel">
+                    <option value="deepseek-chat" selected>deepseek-chat</option>
+                    <option value="deepseek-reasoner">deepseek-reasoner</option>
+                  </select>
+                </label>
+                <label class="small muted" style="display:flex; gap:6px; align-items:center">
+                  <input id="dsUseLLM" type="checkbox" /> Usar LLM
+                </label>
+                <div class="small muted">Nota: el navegador puede bloquear CORS. Usa un proxy propio si es necesario.</div>
+              </div>
+            </div>
+            <div class="card" id="advisorSummary"></div>
+            <div class="card" id="advisorGood"></div>
+            <div class="card" id="advisorBad"></div>
+            <div class="card" style="grid-column: 1 / -1">
+              <div id="advisorChatList" class="chat"></div>
+              <div class="row" style="margin-top:8px; gap:8px">
+                <input id="advisorInput" type="text" placeholder="Pregunta algo: ¿qué tal me va con h4? ¿y contra Sicilianas?" style="flex:1">
+                <button id="advisorSend" class="primary">Preguntar</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="row"><h2>Explorador de apertura (árbol + tablero)</h2><div class="spacer"></div>
+            <button id="expReset" class="ghost small">Reset</button>
+          </div>
+          <div class="grid cols-2" id="expWrap">
+            <div class="card">
+              <canvas id="expBoard" width="280" height="280" style="display:block"></canvas>
+              <div class="small muted" id="expFen" style="margin-top:6px"></div>
+              <div class="small muted" id="expEval" style="margin-top:4px"></div>
+            </div>
+            <div class="card">
+              <div class="row"><h3 id="expTitle" style="margin:0">—</h3><div class="spacer"></div>
+                <button id="expBack" class="ghost small">Atrás</button>
+              </div>
+              <div class="small muted" id="expPath" style="margin:6px 0">—</div>
+              <div id="expMoves" class="grid"></div>
+            </div>
+          </div>
+          <div class="small muted" style="margin-top:6px">Consejo: selecciona una apertura en la tabla; luego usa este árbol para explorar tus respuestas más exitosas y las del rival. Si añades <code>src/stockfish.js</code>, verás evaluación del motor.</div>
+        </div>
+
+        <div class="panel">
+          <div class="row"><h2>Modelo ML (beta): puntos fuertes y débiles</h2><div class="spacer"></div>
+            <button id="mlTrain" class="primary small">Entrenar</button>
+          </div>
+          <div class="small muted" id="mlStatus">Usa tu historial para entrenar un bosque aleatorio ligero (client‑side) y detectar patrones de jugadas con mayor/menor winrate.</div>
+          <div class="grid cols-2" style="margin-top:10px">
+            <div class="card">
+              <h3 style="margin:0 0 6px 0">Patrones favorables</h3>
+              <ul id="mlPos" style="margin:0; padding-left:18px"></ul>
+            </div>
+            <div class="card">
+              <h3 style="margin:0 0 6px 0">Patrones a evitar</h3>
+              <ul id="mlNeg" style="margin:0; padding-left:18px"></ul>
+            </div>
+          </div>
+          <div class="grid" style="margin-top:10px">
+            <div class="card">
+              <h3 style="margin:0 0 6px 0">Vista de recomendación (click en un patrón)</h3>
+              <canvas id="mlBoard" width="280" height="280" style="display:block"></canvas>
+              <div class="small muted" id="mlBoardHint" style="margin-top:6px">Consejo: pulsa en una línea de la lista para previsualizar la jugada sugerida sobre el tablero. Si el patrón no especifica jugada, no se puede animar.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="panel">
+            <div class="row"><h2>Distribución longitud de partidas</h2><div class="spacer"></div></div>
+            <canvas id="lengthHist"></canvas>
+          </div>
+          <div class="panel">
+            <div class="row"><h2>Resultados por día y hora</h2><div class="spacer"></div></div>
+            <canvas id="heatmap"></canvas>
+            <div class="small muted">Hora local del navegador</div>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="panel">
+            <div class="row"><h2>Winrate por nº partida en sesión</h2><div class="spacer"></div></div>
+            <canvas id="wrBySessionIdx"></canvas>
+            <div class="small muted" id="explain-session"></div>
+          </div>
+          <div class="panel">
+            <div class="row"><h2>Winrate por diferencia de ELO</h2><div class="spacer"></div></div>
+            <canvas id="wrByEloDiff"></canvas>
+            <div class="small muted" id="explain-elodiff"></div>
+          </div>
+        </div>
+
+        <div class="grid cols-2">
+          <div class="panel">
+            <div class="row"><h2>Winrate por duración</h2><div class="spacer"></div></div>
+            <canvas id="wrByDuration"></canvas>
+            <div class="small muted" id="explain-duration"></div>
+          </div>
+          <div class="panel">
+            <div class="row"><h2>Winrate por hora</h2><div class="spacer"></div></div>
+            <div class="small muted">Promedio sobre días</div>
+            <div class="small muted" id="explain-hour"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="row"><h2>Detalle rápido</h2><div class="spacer"></div>
+            <button id="exportBtn" class="ghost small">Exportar JSON</button>
+          </div>
+          <div class="kpis" style="margin-top:10px">
+            <div class="card"><h3>Partidas totales</h3><div class="big" id="kpi-games">—</div></div>
+            <div class="card"><h3>Racha máx. victorias</h3><div class="big" id="kpi-win-streak">—</div></div>
+            <div class="card"><h3>Winrate global</h3><div class="big" id="kpi-winrate">—</div></div>
+            <div class="card"><h3>ELO máx.</h3><div class="big" id="kpi-max-elo">—</div></div>
+            <div class="card"><h3>Rival medio</h3><div class="big" id="kpi-opp-avg">—</div></div>
+            <div class="card"><h3>Media de jugadas</h3><div class="big" id="kpi-avg-moves">—</div></div>
+          </div>
+        </div>
+
+        <div class="footer">Datos: Chess.com Public Data API • Visualizador local, sin backend</div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script>
+      // Utilidades básicas
+      const $ = sel => document.querySelector(sel);
+      const fmt = new Intl.NumberFormat('es-ES');
+      const pct = v => (isFinite(v)? (v*100).toFixed(1)+'%':'—');
+
+      // API Chess.com
+      const API = {
+        profile: u => `https://api.chess.com/pub/player/${encodeURIComponent(u)}`,
+        stats: u => `https://api.chess.com/pub/player/${encodeURIComponent(u)}/stats`,
+        archives: u => `https://api.chess.com/pub/player/${encodeURIComponent(u)}/games/archives`,
+      };
+
+      // Caché en localStorage por URL
+      const cacheGet = async (url) => {
+        try{
+          const key = 'cc_cache_'+url;
+          const v = localStorage.getItem(key);
+          if(!v) return null;
+          const o = JSON.parse(v);
+          // Expira en 12h para mensual y 1h para profile/stats
+          const ttl = url.includes('/games/') ? 1000*60*60*12 : 1000*60*60;
+          if(Date.now() - o.t > ttl) return null;
+          return o.d;
+        }catch{return null}
+      }
+      const cacheSet = (url, data) => {
+        try{
+          const key = 'cc_cache_'+url;
+          localStorage.setItem(key, JSON.stringify({t:Date.now(), d:data}));
+        }catch{}
+      }
+      const cacheClear = () => {
+        Object.keys(localStorage).forEach(k=>{ if(k.startsWith('cc_cache_')) localStorage.removeItem(k); });
+      }
+
+      // LLM cache helpers (persist across sessions; cleared separately)
+      const llmCacheGet = (key) => {
+        try{ const v = localStorage.getItem('ds_cache_'+key); return v? JSON.parse(v) : null; }catch{return null}
+      };
+      const llmCacheSet = (key, data) => {
+        try{ localStorage.setItem('ds_cache_'+key, JSON.stringify({t:Date.now(), d:data})); }catch{}
+      };
+      const llmCacheClear = () => {
+        const ok = confirm('Vas a borrar la caché de resúmenes LLM. Esto puede incrementar el uso de tokens en futuras consultas. ¿Continuar?');
+        if(!ok) return;
+        Object.keys(localStorage).forEach(k=>{ if(k.startsWith('ds_cache_')) localStorage.removeItem(k); });
+      };
+
+      // Fetch con caché y control de errores
+      async function getJSON(url){
+        const cached = await cacheGet(url);
+        if(cached) return cached;
+        const res = await fetch(url, {headers:{'Accept':'application/json'}});
+        if(!res.ok) throw new Error('HTTP '+res.status+' '+url);
+        const data = await res.json();
+        cacheSet(url, data);
+        return data;
+      }
+
+      // Concurrency queue
+      async function pMap(list, mapper, {concurrency=6, onProgress}={}){
+        const ret = new Array(list.length);
+        let i = 0, done = 0;
+        const run = async () => {
+          while(i < list.length){
+            const cur = i++;
+            try{
+              ret[cur] = await mapper(list[cur], cur);
+            }catch(e){
+              console.warn('Error en tarea', e);
+              ret[cur] = null;
+            }
+            done++;
+            onProgress && onProgress(done, list.length);
+          }
+        };
+        const workers = Array.from({length: Math.min(concurrency, list.length)}, run);
+        await Promise.all(workers);
+        return ret;
+      }
+
+      // PGN helpers
+      function parsePGNTags(pgn){
+        const tags = {};
+        if(!pgn) return tags;
+        const re = /\[(\w+)\s+"([\s\S]*?)"\]/g; // captura multilínea hasta comillas
+        let m; while((m = re.exec(pgn))){ tags[m[1]] = m[2]; }
+        return tags;
+      }
+      function countMovesFromPGN(pgn){
+        if(!pgn) return null;
+        const tags = parsePGNTags(pgn);
+        if(tags.PlyCount) return parseInt(tags.PlyCount,10);
+        // fallback: contar apariciones de número de jugada " 1. 2. "
+        const body = pgn.split('\n\n').slice(1).join('\n');
+        const moveNums = (body.match(/\b\d+\./g)||[]).length;
+        return moveNums*2; // aproximación a plies
+      }
+      function stripCommentsAndTags(pgn){
+        if(!pgn) return '';
+        const body = pgn.split('\n\n').slice(1).join('\n');
+        const noBraces = body.replace(/\{[\s\S]*?\}/g, ' ');
+        const noSemis = noBraces.replace(/;.*$/gm, ' ');
+        const noNAG = noSemis.replace(/\$\d+/g, ' ');
+        return noNAG.trim();
+      }
+      function extractMovesSAN(pgn){
+        const txt = stripCommentsAndTags(pgn);
+        if(!txt) return [];
+        const tokens = txt.split(/\s+/).filter(Boolean);
+        const moves = [];
+        for(const tok of tokens){
+          if(/^\d+\.\.\.$/.test(tok)) continue;
+          if(/^\d+\.$/.test(tok)) continue;
+          if(/^(1-0|0-1|1\/2-1\/2)$/.test(tok)) continue;
+          moves.push(tok);
+        }
+        return moves;
+      }
+
+      // Transformar juegos a dataset canónico
+      function normalizeGames(archData, username){
+        const u = username.toLowerCase();
+        const out = [];
+        for(const g of (archData.games||[])){
+          if(!g.white || !g.black) continue;
+          const white = g.white.username?.toLowerCase?.();
+          const black = g.black.username?.toLowerCase?.();
+          if(white !== u && black !== u) continue;
+          const meColor = white === u ? 'white' : 'black';
+          const oppColor = meColor === 'white' ? 'black' : 'white';
+          const my = g[meColor];
+          const opp = g[oppColor];
+          const pgn = g.pgn || null;
+          const tags = parsePGNTags(pgn);
+          const myElo = my.rating || parseInt(meColor==='white'?tags.WhiteElo:tags.BlackElo || '0', 10) || null;
+          const oppElo = opp?.rating || parseInt(oppColor==='white'?tags.WhiteElo:tags.BlackElo || '0', 10) || null;
+          const result = my.result || tags.Result || null; // JSON usa claves como "win", "checkmated"; PGN usa 1-0/0-1/1/2-1/2
+          const eco = g.eco || tags.ECO || null;
+          const opening = g.opening || tags.Opening || null;
+          const variation = g.variation || tags.Variation || null;
+          const timeClass = (g.time_class || tags.TimeClass || '').toLowerCase();
+          const endTime = g.end_time ? g.end_time*1000 : (tags.EndTime? Date.parse((tags.EndDate||tags.Date||'')+' '+(tags.EndTime||'')) : null);
+          const rules = (g.rules || tags.Rules || 'chess').toLowerCase();
+          const termination = g.termination || tags.Termination || null;
+          const movesPlies = countMovesFromPGN(pgn);
+          const url = g.url || null;
+          const movesSAN = pgn? extractMovesSAN(pgn).slice(0, 20) : [];
+          // estimate duration from PGN tags if present
+          let startMs = null;
+          if(tags.StartTime){
+            const sd = (tags.StartDate||tags.Date||'');
+            startMs = Date.parse(sd+' '+tags.StartTime);
+          } else if(tags.UTCDate && tags.UTCTime){
+            startMs = Date.parse(tags.UTCDate+' '+tags.UTCTime+' UTC');
+          }
+          const durationSec = (startMs && endTime && endTime>startMs) ? Math.round((endTime - startMs)/1000) : null;
+          out.push({
+            url, timeClass, rules,
+            meColor, opponent: opp.username, myElo, oppElo, result,
+            eco, opening, variation,
+            endTime, movesPlies,
+            durationSec,
+            movesSAN,
+          });
+        }
+        return out;
+      }
+
+      // Agregaciones y métricas
+      function aggregate(games, {mode='all', sinceMs=null}={}){
+        let data = games.filter(g=>g.rules==='chess');
+        if(mode!=='all') data = data.filter(g=>g.timeClass===mode);
+        if(sinceMs) data = data.filter(g=>!g.endTime || g.endTime>=sinceMs);
+
+        // Orden cronológico por endTime con fallback a insert order
+        data.sort((a,b)=> (a.endTime||0)-(b.endTime||0));
+
+        // Elo vs distintos ejes X (partidas/tiempo/movimientos/duración)
+        const eloSeriesCount = {bullet:[], blitz:[], rapid:[], daily:[]};
+        const eloSeriesTime = {bullet:[], blitz:[], rapid:[], daily:[]};
+        const eloSeriesMoves = {bullet:[], blitz:[], rapid:[], daily:[]};
+        const eloSeriesDur = {bullet:[], blitz:[], rapid:[], daily:[]};
+        const counters = {bullet:0, blitz:0, rapid:0, daily:0};
+        const maxElo = {v:0};
+        for(const g of data){
+          const cls = (g.timeClass||'').toLowerCase();
+          if(!(cls in counters)) continue;
+          counters[cls]++;
+          if(g.myElo){
+            eloSeriesCount[cls].push({x:counters[cls], y:g.myElo, date: g.endTime||null});
+            if(g.endTime){ eloSeriesTime[cls].push({x:g.endTime, y:g.myElo, date:g.endTime}); }
+            if(g.movesPlies){ const mv=Math.round(g.movesPlies/2); eloSeriesMoves[cls].push({x:mv, y:g.myElo, date:g.endTime||null}); }
+            if(g.durationSec!=null){ const mins=Math.max(0, Math.round(g.durationSec/60)); eloSeriesDur[cls].push({x:mins, y:g.myElo, date:g.endTime||null}); }
+            if(g.myElo>maxElo.v) maxElo.v = g.myElo;
+          }
+        }
+
+        // Resultados por modalidad
+        const resByMode = {bullet:{w:0,d:0,l:0}, blitz:{w:0,d:0,l:0}, rapid:{w:0,d:0,l:0}, daily:{w:0,d:0,l:0}};
+        for(const g of data){
+          const cls=(g.timeClass||'').toLowerCase();
+          if(!(cls in resByMode)) continue;
+          const r = normalizeResult(g.result, g.meColor);
+          resByMode[cls][r]++;
+        }
+
+        // Aperturas
+        const openings = new Map();
+        for(const g of data){
+          const key = `${g.eco||'—'}|${g.opening||'—'}|${g.meColor}`;
+          if(!openings.has(key)) openings.set(key,{eco:g.eco||'—', opening:g.opening||'—', color:g.meColor, games:0,w:0,d:0,l:0, sample: (g.movesSAN||[]) });
+          const o = openings.get(key);
+          if((o.sample?.length||0)===0 && (g.movesSAN?.length||0)>0) o.sample = g.movesSAN;
+          o.games++;
+          const r = normalizeResult(g.result, g.meColor);
+          o[r]++;
+        }
+        const openingsArr = [...openings.values()].filter(o=>o.games>=5).map(o=>({
+          ...o, winrate: o.games? o.w/o.games:0
+        })).sort((a,b)=> b.winrate - a.winrate || b.games - a.games).slice(0,25);
+
+        // Color
+        const color = {white:{w:0,d:0,l:0}, black:{w:0,d:0,l:0}};
+        for(const g of data){
+          const r = normalizeResult(g.result, g.meColor);
+          color[g.meColor][r]++;
+        }
+
+        // Histograma longitud partidas (en jugadas, no plies)
+        const lenHist = new Array(20).fill(0); // bins: 0-10, 11-20, ... 191-200
+        let totalMoves=0, totalMovesCount=0;
+        for(const g of data){
+          if(!g.movesPlies) continue;
+          const moves = Math.round(g.movesPlies/2);
+          totalMoves += moves; totalMovesCount++;
+          const bin = Math.max(0, Math.min(19, Math.floor((moves-1)/10)));
+          lenHist[bin]++;
+        }
+
+        // Heatmap día x hora (resultados)
+        const heat = Array.from({length:7},()=>Array.from({length:24},()=>({w:0,d:0,l:0})));
+        for(const g of data){
+          if(!g.endTime) continue;
+          const dt = new Date(g.endTime);
+          const day = (dt.getDay()+6)%7; // 0=lunes
+          const hr = dt.getHours();
+          const r = normalizeResult(g.result, g.meColor);
+          heat[day][hr][r]++;
+        }
+
+        // Winrate por índice dentro de sesión (fatiga/momentum)
+        // Sesión = juegos consecutivos separados por menos de sessionGap minutos
+        const gapMin = Math.max(5, Math.min(240, parseInt(document.getElementById('sessionGap')?.value||'30',10)));
+        const gapMsSess = gapMin*60*1000;
+        const bySessionIdx = new Array(12).fill(0).map(()=>({w:0,d:0,l:0})); // 1..12 (12+=)
+        let lastT = null; let idx=0;
+        for(const g of data){
+          const t = g.endTime||null;
+          if(!t){ idx=1; }
+          else if(lastT===null || (t - lastT) > gapMsSess){ idx=1; }
+          else { idx++; }
+          lastT = t||lastT;
+          const bin = Math.min(idx, 12);
+          const r = normalizeResult(g.result, g.meColor);
+          bySessionIdx[bin-1][r]++;
+        }
+
+        // Winrate por diferencia de ELO (oponente - yo)
+        const diffBins = [ -999, -400, -200, -100, 0, 100, 200, 400, 999 ];
+        const byEloDiff = new Array(diffBins.length-1).fill(0).map(()=>({w:0,d:0,l:0}));
+        for(const g of data){
+          if(!g.myElo || !g.oppElo) continue;
+          const diff = (g.oppElo - g.myElo);
+          let bi = 0; while(bi < diffBins.length-1 && !(diff >= diffBins[bi] && diff < diffBins[bi+1])) bi++;
+          if(bi < byEloDiff.length){ const r = normalizeResult(g.result, g.meColor); byEloDiff[bi][r]++; }
+        }
+
+        // Winrate por duración (min)
+        const durEdges = [0,3,5,8,12,20,60,9999];
+        const byDuration = new Array(durEdges.length-1).fill(0).map(()=>({w:0,d:0,l:0}));
+        for(const g of data){
+          if(!g.durationSec) continue;
+          const m = g.durationSec/60;
+          let bi=0; while(bi<durEdges.length-1 && !(m>=durEdges[bi] && m<durEdges[bi+1])) bi++;
+          if(bi<byDuration.length){ const r=normalizeResult(g.result,g.meColor); byDuration[bi][r]++; }
+        }
+
+        // KPIs
+        const total = data.length;
+        let w=0,d=0,l=0, oppEloSum=0, oppCnt=0;
+        let bestStreak=0, curStreak=0;
+        for(const g of data){
+          const r = normalizeResult(g.result, g.meColor);
+          if(r==='w'){curStreak++; bestStreak = Math.max(bestStreak, curStreak);} else {curStreak=0}
+          if(r==='w') w++; else if(r==='d') d++; else l++;
+          if(g.oppElo){oppEloSum+=g.oppElo; oppCnt++;}
+        }
+        const winrate = total? w/total:0;
+        const oppAvg = oppCnt? Math.round(oppEloSum/oppCnt):null;
+        const avgMoves = totalMovesCount? Math.round(totalMoves/totalMovesCount):null;
+
+        return {
+          data,
+          eloSeriesCount,
+          eloSeriesTime,
+          eloSeriesMoves,
+          eloSeriesDur,
+          resByMode,
+          openings: openingsArr,
+          color,
+          lenHist,
+          heat,
+          bySessionIdx,
+          byEloDiff: { bins: diffBins, data: byEloDiff },
+          byDuration: { edges: durEdges, data: byDuration },
+          kpis: { total, bestStreak, winrate, maxElo: maxElo.v||null, oppAvg, avgMoves }
+        };
+      }
+
+      function normalizeResult(result, meColor){
+        // Chess.com JSON: win/loss/draw; o términos de finalización por color
+        if(!result) return 'd';
+        const r = (''+result).toLowerCase();
+        if(r==='win') return 'w';
+        if(r==='agreed' || r==='repetition' || r==='stalemate' || r==='timevsinsufficient' || r==='insufficient' || r==='50move') return 'd';
+        if(r==='checkmated' || r==='timeout' || r==='resigned' || r==='abandoned' || r==='lose' || r==='bughousepartnerlose') return 'l';
+        if(r==='1-0' || r==='0-1' || r==='1/2-1/2'){
+          if(r==='1/2-1/2') return 'd';
+          return (r==='1-0' && meColor==='white') || (r==='0-1' && meColor==='black') ? 'w':'l';
+        }
+        return 'd';
+      }
+
+      // Render: Chart.js instancias globales
+      let charts = {};
+      function destroyCharts(){
+        Object.values(charts).forEach(c=>{ try{c.destroy()}catch{} }); charts={};
+      }
+      const palette = {
+        bullet:'#ff9f9f', blitz:'#3aa1ff', rapid:'#8be7a4', daily:'#ffce8b'
+      };
+
+      function renderAll(agg){
+        // KPIs
+        $('#kpi-games').textContent = fmt.format(agg.kpis.total||0);
+        $('#kpi-win-streak').textContent = agg.kpis.bestStreak||0;
+        $('#kpi-winrate').textContent = pct(agg.kpis.winrate||0);
+        $('#kpi-max-elo').textContent = agg.kpis.maxElo? fmt.format(agg.kpis.maxElo):'—';
+        $('#kpi-opp-avg').textContent = agg.kpis.oppAvg? fmt.format(agg.kpis.oppAvg):'—';
+        $('#kpi-avg-moves').textContent = agg.kpis.avgMoves? fmt.format(agg.kpis.avgMoves):'—';
+
+        // ELO chart: eje X y color
+        const xMode = $('#xAxisMode').value; // 'games' | 'time' | 'moves' | 'duration'
+        const xTitleTxt = xMode==='time' ? 'ELO vs fecha' : xMode==='moves' ? 'ELO vs nº de movimientos' : xMode==='duration' ? 'ELO vs duración (min)' : 'ELO vs número de partidas';
+        $('#eloTitle').textContent = xTitleTxt;
+        const colorMode = $('#colorMode').value; // 'mode' | 'date'
+        const gapDays = Math.max(1, parseInt($('#gapDays').value||'14',10));
+        const gapMs = gapDays*24*60*60*1000;
+
+        // Dataset points según eje X
+        const source = xMode==='time'? agg.eloSeriesTime : xMode==='moves'? agg.eloSeriesMoves : xMode==='duration'? agg.eloSeriesDur : agg.eloSeriesCount;
+        // Calcular min/max fecha para gradiente
+        let minDate=Infinity, maxDate=-Infinity;
+        for(const key of Object.keys(source)){
+          for(const p of source[key]){ if(p.date){ if(p.date<minDate) minDate=p.date; if(p.date>maxDate) maxDate=p.date; } }
+        }
+        if(!isFinite(minDate)||!isFinite(maxDate)||minDate===maxDate){ minDate=Date.now()-1; maxDate=Date.now(); }
+
+        function colorForDate(ms){
+          const t = Math.max(0, Math.min(1, (ms - minDate)/(maxDate - minDate)));
+          // azul (210) -> verde (140) -> naranja (30)
+          const h = 210 - 180*t; // 210 -> 30
+          return `hsl(${h}, 80%, 55%)`;
+        }
+
+        function withGapBreaks(points){
+          if(colorMode!=='date') return points;
+          if(points.length<2) return points;
+          const out=[];
+          let last = points[0];
+          out.push(last);
+          for(let i=1;i<points.length;i++){
+            const cur = points[i];
+            if(last?.date && cur?.date && (cur.date - last.date) > gapMs){
+              // corte
+              out.push({x:null, y:null});
+            }
+            out.push(cur);
+            last = cur;
+          }
+          return out;
+        }
+
+        const ds = [];
+        for(const k of ['blitz','rapid','bullet','daily']){
+          const series = source[k];
+          if(!series?.length) continue;
+          const dataPts = withGapBreaks(series);
+          const base = {
+            label: k.charAt(0).toUpperCase()+k.slice(1),
+            data: dataPts,
+            pointRadius: 0, tension: .2,
+            spanGaps: false,
+          };
+          if(colorMode==='mode'){
+            Object.assign(base, {borderColor: palette[k], backgroundColor: palette[k]});
+          }else{
+            // color por fecha con segment callback
+            Object.assign(base, {
+              borderColor: palette[k], // fallback
+              segment: {
+                borderColor: ctx => {
+                  const p = ctx.p1?.raw || ctx.p1Raw || {};
+                  const ms = p?.date || (typeof p?.x==='number'? p.x : null);
+                  return ms? colorForDate(ms) : palette[k];
+                }
+              }
+            });
+          }
+          ds.push(base);
+        }
+        charts.eloByGame = new Chart($('#eloByGame'),{
+          type:'line',
+          data:{datasets: ds},
+          options:{
+            responsive:true, maintainAspectRatio:false,
+            scales:{
+              x:{ type: xMode==='time'? 'time' : 'linear', title:{display:true, text: xTitleTxt }, ticks:{ precision:0 } },
+              y:{title:{display:true, text:'ELO'}}
+            },
+            plugins:{legend:{position:'bottom'}}
+          }
+        });
+        charts.eloByGame.canvas.parentNode.style.height='320px';
+
+        // Resultados por modalidad (stacked bar)
+        const modes=['bullet','blitz','rapid','daily'];
+        const res=agg.resByMode;
+        charts.resultsByMode = new Chart($('#resultsByMode'),{
+          type:'bar',
+          data:{
+            labels:modes.map(m=>m.charAt(0).toUpperCase()+m.slice(1)),
+            datasets:[
+              {label:'Victorias', data:modes.map(m=>res[m].w), backgroundColor:'#8be7a4'},
+              {label:'Empates', data:modes.map(m=>res[m].d), backgroundColor:'#ffce8b'},
+              {label:'Derrotas', data:modes.map(m=>res[m].l), backgroundColor:'#ff9f9f'}
+            ]
+          },
+          options:{responsive:true, maintainAspectRatio:false, scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:'bottom'}}}
+        });
+        charts.resultsByMode.canvas.parentNode.style.height='320px';
+
+        // Color
+        charts.byColor = new Chart($('#byColor'),{
+          type:'bar',
+          data:{
+            labels:['Blancas','Negras'],
+            datasets:[
+              {label:'Victorias', data:[agg.color.white.w, agg.color.black.w], backgroundColor:'#8be7a4'},
+              {label:'Empates', data:[agg.color.white.d, agg.color.black.d], backgroundColor:'#ffce8b'},
+              {label:'Derrotas', data:[agg.color.white.l, agg.color.black.l], backgroundColor:'#ff9f9f'}
+            ]
+          },
+          options:{responsive:true, maintainAspectRatio:false, scales:{x:{stacked:true}, y:{stacked:true}}, plugins:{legend:{position:'bottom'}}}
+        });
+        charts.byColor.canvas.parentNode.style.height='300px';
+
+        // Longitud partidas
+        charts.lengthHist = new Chart($('#lengthHist'),{
+          type:'bar',
+          data:{
+            labels:Array.from({length:20},(_,i)=>`${i*10+1}-${(i+1)*10}`),
+            datasets:[{label:'Partidas', data: agg.lenHist, backgroundColor:'#3aa1ff'}]
+          },
+          options:{responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}}
+        });
+        charts.lengthHist.canvas.parentNode.style.height='300px';
+
+        // Heatmap simple con barras apiladas por hora (winrate)
+        // Representamos % victorias por hora (promedio sobre días)
+        const labelsH = Array.from({length:24},(_,h)=> `${h}:00`);
+        const winPctByHour = labelsH.map((_,h)=>{
+          let w=0,t=0; for(let d=0; d<7; d++){ const cell=agg.heat[d][h]; const tot=cell.w+cell.d+cell.l; w+=cell.w; t+=tot; }
+          return t? Math.round((w/t)*100):0;
+        });
+        charts.heatmap = new Chart($('#heatmap'),{
+          type:'bar',
+          data:{ labels: labelsH, datasets:[{ label:'% Victorias', data: winPctByHour, backgroundColor:'#8be7a4' }]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{title:{display:true, text:'%'} , min:0, max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.heatmap.canvas.parentNode.style.height='300px';
+
+        // Winrate por nº partida en sesión
+        const labelsIdx = Array.from({length:12},(_,i)=> (i<11? String(i+1) : '12+'));
+        const wrIdx = labelsIdx.map((_,i)=>{
+          const c = agg.bySessionIdx[i]; const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0;
+        });
+        charts.wrBySessionIdx = new Chart($('#wrBySessionIdx'),{
+          type:'bar',
+          data:{ labels: labelsIdx, datasets:[{label:'% Victorias', data: wrIdx, backgroundColor:'#3aa1ff'}] },
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.wrBySessionIdx.canvas.parentNode.style.height='280px';
+
+        // Winrate por diferencia de ELO
+        const b = agg.byEloDiff.bins;
+        const labelsDiff = Array.from({length:b.length-1},(_,i)=> `${b[i]}..${b[i+1]-1}`);
+        if(labelsDiff.length){ labelsDiff[0] = '<= -400'; labelsDiff[labelsDiff.length-1] = '>= 400'; }
+        const wrDiff = agg.byEloDiff.data.map(x=>{ const t=x.w+x.d+x.l; return t? Math.round((x.w/t)*100):0; });
+        charts.wrByEloDiff = new Chart($('#wrByEloDiff'),{
+          type:'bar', data:{ labels:labelsDiff, datasets:[{label:'% Victorias', data:wrDiff, backgroundColor:'#8be7a4'}] },
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.wrByEloDiff.canvas.parentNode.style.height='280px';
+
+        // Winrate por duración
+        const e = agg.byDuration.edges;
+        const labelsDur = Array.from({length:e.length-1},(_,i)=> i===e.length-2? `${e[i]}+m` : `${e[i]}-${e[i+1]}m`);
+        const wrDur = agg.byDuration.data.map(x=>{ const t=x.w+x.d+x.l; return t? Math.round((x.w/t)*100):0; });
+        charts.wrByDuration = new Chart($('#wrByDuration'),{
+          type:'bar', data:{ labels: labelsDur, datasets:[{label:'% Victorias', data: wrDur, backgroundColor:'#ffce8b'}]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.wrByDuration.canvas.parentNode.style.height='280px';
+
+        // Explanations
+        renderExplanations(agg);
+
+        // Tabla de aperturas
+        const tbody = $('#openingsTable tbody');
+        tbody.innerHTML = '';
+        for(const o of agg.openings){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="opening-cell" data-eco="${escapeHtml(o.eco)}" data-opening="${escapeHtml(o.opening)}"></td>
+            <td data-eco="${escapeHtml(o.eco)}" data-opening="${escapeHtml(o.opening)}" data-color="${o.color}">
+              <a class="op-link" href="${openingUrl(o.opening||'')}" target="_blank" rel="noopener">${escapeHtml(o.opening)}</a>
+              <div class="small muted" style="margin-top:2px">${escapeHtml(o.eco)}</div>
+            </td>
+            <td>${o.color==='white'?'Blancas':'Negras'}</td>
+            <td>${fmt.format(o.games)}</td>
+            <td><span class="pill win">${fmt.format(o.w)}</span></td>
+            <td><span class="pill draw">${fmt.format(o.d)}</span></td>
+            <td><span class="pill loss">${fmt.format(o.l)}</span></td>
+            <td>${(o.winrate*100).toFixed(1)}%</td>`;
+          const nameCell = tr.querySelector('.opening-cell');
+          nameCell.textContent = o.opening||'—';
+          try{ nameCell.dataset.sample = JSON.stringify(o.sample||[]); }catch{ nameCell.dataset.sample='[]'; }
+          tr.dataset.opening = o.opening||'';
+          tr.dataset.eco = o.eco||'';
+          tr.dataset.color = o.color||'';
+          // row click/hover to update advisor in tiempo real
+          tr.addEventListener('mouseenter', () => selectOpeningForAdvisor(o.opening, o.eco, o.color));
+          tr.addEventListener('click', (ev) => {
+            const a = ev.target && ev.target.closest ? ev.target.closest('a.op-link') : null;
+            if (a) {
+              ev.preventDefault();
+              selectOpeningForAdvisor(o.opening, o.eco, o.color);
+              window.open(a.href, '_blank', 'noopener');
+            } else {
+              selectOpeningForAdvisor(o.opening, o.eco, o.color);
+            }
+          });
+          tbody.appendChild(tr);
+        }
+        enableOpeningPreviews(tbody);
+        attachOpeningsSorting(document.getElementById('openingsTable'));
+
+        // Insights de aperturas (macro categorías)
+        const insightsEl = document.getElementById('openingInsights');
+        insightsEl.innerHTML = '';
+        const insights = buildOpeningInsights(agg.data);
+        const overall = Math.round((insights.overallWinrate||0)*100);
+        const makeList = (title, arr) => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          const h = document.createElement('h3'); h.textContent = title; card.appendChild(h);
+          const ul = document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px';
+          arr.forEach(it => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${escapeHtml(it.key)}</strong> — ${fmt.format(it.games)} partidas, ${Math.round(it.winrate*100)}% vict.`;
+            ul.appendChild(li);
+          });
+          card.appendChild(ul);
+          return card;
+        };
+        const best = makeList('Mejores categorías', insights.best);
+        const worst = makeList('Peores categorías', insights.worst);
+        const summary = document.createElement('div');
+        summary.className = 'card';
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = insights.summary || `Winrate global ${overall}%`;
+        summary.appendChild(p);
+        insightsEl.appendChild(summary);
+        insightsEl.appendChild(best);
+        insightsEl.appendChild(worst);
+      }
+
+      function escapeHtml(s){
+        return (''+(s??'')).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+      }
+      function slugifyOpeningName(name){
+        try{
+          return (name||'')
+            .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+            .replace(/[^a-zA-Z0-9]+/g,'-')
+            .replace(/^-+|-+$/g,'')
+            .replace(/-+/g,'-');
+        }catch{ return encodeURIComponent(name||''); }
+      }
+      function openingUrl(name){
+        const slug = slugifyOpeningName(name);
+        return 'https://www.chess.com/openings/' + encodeURIComponent(slug);
+      }
+
+      // Opening preview hover
+      function enableOpeningPreviews(tbody){
+        let popup = null;
+        const onEnter = (e) => {
+          const cell = e.currentTarget;
+          const sample = JSON.parse(cell.dataset.sample||'[]');
+          popup = createOpeningPopup(cell.dataset.opening||'', sample);
+          positionPopup(popup, e);
+          document.body.appendChild(popup);
+          requestAnimationFrame(()=> popup.classList.add('show'));
+        };
+        const onMove = (e) => { if(popup) positionPopup(popup, e); };
+        const onLeave = () => {
+          if(popup){
+            const ref = popup; popup=null;
+            ref.classList.add('hide');
+            ref.addEventListener('transitionend', ()=> ref.remove(), {once:true});
+          }
+        };
+        tbody.querySelectorAll('.opening-cell').forEach(cell => {
+          cell.addEventListener('mouseenter', onEnter);
+          cell.addEventListener('mousemove', onMove);
+          cell.addEventListener('mouseleave', onLeave);
+        });
+      }
+
+      function positionPopup(el, evt){
+        const pad = 12;
+        const vw = window.innerWidth, vh = window.innerHeight;
+        let x = evt.clientX + pad, y = evt.clientY + pad;
+        el.style.position = 'fixed';
+        el.style.left = '0px'; el.style.top = '0px';
+        document.body.appendChild(el);
+        const rect = el.getBoundingClientRect();
+        if(x + rect.width > vw) x = evt.clientX - rect.width - pad;
+        if(y + rect.height > vh) y = evt.clientY - rect.height - pad;
+        el.style.left = x + 'px';
+        el.style.top = y + 'px';
+      }
+
+      function createOpeningPopup(name, sample){
+        const wrap = document.createElement('div');
+        wrap.className = 'opening-preview';
+        wrap.innerHTML = `<div class="title">${escapeHtml(name)}</div>`;
+        const canvas = document.createElement('canvas');
+        canvas.width = 220; canvas.height = 220; canvas.style.display='block'; canvas.style.marginTop='6px';
+        wrap.appendChild(canvas);
+        try { const pos = buildPositionFromSAN(sample, 10); drawBoardCanvas(canvas, pos); } catch{}
+        return wrap;
+      }
+
+      function initialBoard(){
+        const r1 = ['r','n','b','q','k','b','n','r'];
+        const r2 = Array(8).fill('p');
+        const r7 = Array(8).fill('P');
+        const r8 = ['R','N','B','Q','K','B','N','R'];
+        const empty = Array(8).fill(null);
+        return [r1.slice(), r2.slice(), empty.slice(), empty.slice(), empty.slice(), empty.slice(), r7.slice(), r8.slice()];
+      }
+      function isWhite(p){ return p && p === p.toUpperCase(); }
+      function inside(r,c){ return r>=0 && r<8 && c>=0 && c<8; }
+      function algebraicToRC(sq){ const file = sq.charCodeAt(0)-97; const rank = 8-parseInt(sq[1],10); return {r:rank, c:file}; }
+
+      function buildPositionFromSAN(moves, maxPlies=10){
+        const b = initialBoard();
+        let white = true; let ep=null;
+        for(let i=0;i<Math.min(maxPlies, moves.length); i++){
+          const sanRaw = moves[i];
+          if(!sanRaw) continue;
+          const san = sanRaw.replace(/[+#?!]/g,'');
+          if(san==='O-O' || san==='0-0'){
+            const r = white?7:0; b[r][6] = white?'K':'k'; b[r][4]=null; b[r][5]=white?'R':'r'; b[r][7]=null; white=!white; ep=null; continue;
+          }
+          if(san==='O-O-O' || san==='0-0-0'){
+            const r = white?7:0; b[r][2] = white?'K':'k'; b[r][4]=null; b[r][3]=white?'R':'r'; b[r][0]=null; white=!white; ep=null; continue;
+          }
+          const isCapture = san.includes('x');
+          const promo = (san.match(/=([QRBN])/)||[])[1]||null;
+          const target = san.slice(-2);
+          const dest = algebraicToRC(target);
+          let piece = 'P';
+          if(/^[KQRBN]/.test(san)) piece = san[0];
+          const movers = [];
+          for(let r=0;r<8;r++){
+            for(let c=0;c<8;c++){
+              const p = b[r][c]; if(!p) continue; if(isWhite(p)!==white) continue;
+              const up = p.toUpperCase(); if((piece==='P' && up!=='P') || (piece!=='P' && up!==piece)) continue;
+              if(canReach({r,c}, dest, p, b, isCapture, ep)) movers.push({r,c});
+            }
+          }
+          let from = null;
+          const dis = san.replace(/[x=].*$/,'').replace(/[KQRBN]*/,'').slice(0, san.length-2 - (promo?2:0));
+          if(dis){
+            const file = dis.match(/[a-h]/)?.[0]||null;
+            const rank = dis.match(/[1-8]/)?.[0]||null;
+            from = movers.find(sq => (!file || 'abcdefgh'[sq.c]===file) && (!rank || (8-sq.r)==rank));
+          }
+          if(!from) from = movers[0];
+          if(!from){ white=!white; continue; }
+          const pieceChar = b[from.r][from.c];
+          if(piece==='P' && isCapture && b[dest.r][dest.c]==null && ep && dest.r===ep.r && dest.c===ep.c){
+            const capR = white? dest.r+1 : dest.r-1; b[capR][dest.c]=null;
+          }
+          b[dest.r][dest.c] = promo ? (white?promo:promo.toLowerCase()) : pieceChar;
+          b[from.r][from.c] = null;
+          ep = null;
+          if(piece==='P' && Math.abs(from.r - dest.r)===2){ ep = {r:(from.r+dest.r)/2, c:from.c}; }
+          white = !white;
+        }
+        return b;
+      }
+
+      function canReach(src, dst, p, b, isCapture, ep){
+        const dr = dst.r - src.r, dc = dst.c - src.c; const adx=Math.abs(dr), ady=Math.abs(dc);
+        const up = isWhite(p);
+        const lower = p.toLowerCase();
+        if(lower==='p'){
+          if(dc===0 && !isCapture){
+            if(dr=== (up? -1:1) && !b[dst.r][dst.c]) return true;
+            if(dr=== (up? -2:2) && ((up && src.r===6) || (!up && src.r===1)) && !b[src.r + (up?-1:1)][src.c] && !b[dst.r][dst.c]) return true;
+          } else if(Math.abs(dc)===1 && dr===(up?-1:1)){
+            if(b[dst.r][dst.c] && isWhite(b[dst.r][dst.c])!==up) return true;
+            if(ep && dst.r===ep.r && dst.c===ep.c) return true;
+          }
+          return false;
+        } else if(lower==='n'){
+          if(!((adx===2 && ady===1) || (adx===1 && ady===2))) return false;
+          return !b[dst.r][dst.c] || isWhite(b[dst.r][dst.c])!==up;
+        } else if(lower==='k'){
+          if(Math.max(adx,ady)!==1) return false;
+          return !b[dst.r][dst.c] || isWhite(b[dst.r][dst.c])!==up;
+        } else if(lower==='b' || lower==='r' || lower==='q'){
+          const dirs=[]; if(lower!=='b'){ dirs.push([1,0],[-1,0],[0,1],[0,-1]); } if(lower!=='r'){ dirs.push([1,1],[1,-1],[-1,1],[-1,-1]); }
+          for(const [vx,vy] of dirs){ let r=src.r+vx, c=src.c+vy; while(r>=0&&r<8&&c>=0&&c<8){ if(r===dst.r&&c===dst.c){ return !b[r][c] || isWhite(b[r][c])!==up; } if(b[r][c]) break; r+=vx; c+=vy; }
+          } return false;
+        }
+        return false;
+      }
+
+      function drawBoardCanvas(canvas, b){
+        const ctx = canvas.getContext('2d'); const w = canvas.width, h = canvas.height; ctx.clearRect(0,0,w,h);
+        const sz = Math.min(w,h); const offX=(w-sz)/2, offY=(h-sz)/2; const cell = sz/8;
+        const light = '#f0d9b5', dark = '#b58863';
+        ctx.save(); ctx.translate(offX, offY);
+        for(let r=0;r<8;r++){ for(let c=0;c<8;c++){ ctx.fillStyle = ((r+c)%2===0)? light : dark; ctx.fillRect(c*cell, r*cell, cell, cell); } }
+        ctx.font = Math.floor(cell*0.8)+"px 'Segoe UI Symbol','Apple Symbols','Noto Sans Symbols2','Noto Sans Symbols','DejaVu Sans','Arial Unicode MS',Arial,sans-serif"; ctx.textAlign='center'; ctx.textBaseline='middle';
+        const glyphs = {p:'♟',r:'♜',n:'♞',b:'♝',q:'♛',k:'♚',P:'♙',R:'♖',N:'♘',B:'♗',Q:'♕',K:'♔'};
+        for(let r=0;r<8;r++){ for(let c=0;c<8;c++){ const p=b[r][c]; if(!p) continue; const isW=p===p.toUpperCase(); ctx.fillStyle=isW? '#ffffff' : '#000000'; ctx.fillText(glyphs[p]||'', c*cell+cell/2, r*cell+cell/2+1); } }
+        ctx.restore();
+      }
+
+      // ==== ML beta: previsualización de jugada sugerida en el tablero lateral ====
+      function findMoveOnBoard(b, white, san){
+        try{
+          let ep=null; // sin EP para vista previa
+          const raw = (san||'').replace(/[+#?!]/g,'').replace(/0-0/g,'O-O').replace(/0-0-0/g,'O-O-O');
+          if(raw==='O-O' || raw==='O-O-O'){
+            const r = white?7:0; const from={r, c:4}; const to = {r, c: raw==='O-O'?6:2};
+            return {from, to, piece: white?'K':'k'};
+          }
+          const isCapture = /x/.test(raw);
+          const promo = (raw.match(/=([QRBN])/)||[])[1]||null;
+          const target = raw.slice(-2);
+          if(!/^[a-h][1-8]$/.test(target)) return null;
+          const dest = algebraicToRC(target);
+          let piece = 'P'; if(/^[KQRBN]/.test(raw)) piece = raw[0];
+          const movers=[];
+          for(let r=0;r<8;r++){
+            for(let c=0;c<8;c++){
+              const p=b[r][c]; if(!p) continue; const isW = p===p.toUpperCase(); if(isW!==white) continue;
+              const up=p.toUpperCase(); if((piece==='P' && up!=='P') || (piece!=='P' && up!==piece)) continue;
+              if(canReach({r,c}, dest, p, b, isCapture, ep)) movers.push({r,c,p});
+            }
+          }
+          if(!movers.length) return null;
+          let from = null;
+          const dis = raw.replace(/[x=].*$/,'').replace(/[KQRBN]*/,'').slice(0, raw.length-2 - (promo?2:0));
+          if(dis){
+            const file = dis.match(/[a-h]/)?.[0]||null;
+            const rank = dis.match(/[1-8]/)?.[0]||null;
+            from = movers.find(sq => (!file || 'abcdefgh'[sq.c]===file) && (!rank || (8-sq.r)==rank));
+          }
+          if(!from) from = movers[0];
+          return {from, to: dest, piece: from?.p|| (white?piece:piece.toLowerCase()) };
+        }catch{ return null }
+      }
+
+      function drawArrowOnBoard(canvas, from, to, color='#50a0ff'){
+        const ctx=canvas.getContext('2d'); const w=canvas.width,h=canvas.height; const sz=Math.min(w,h); const offX=(w-sz)/2, offY=(h-sz)/2; const cell=sz/8;
+        const cx=(c)=> offX + c*cell + cell/2; const cy=(r)=> offY + r*cell + cell/2;
+        const x1=cx(from.c), y1=cy(from.r), x2=cx(to.c), y2=cy(to.r);
+        ctx.save();
+        ctx.lineWidth=6; ctx.lineCap='round'; ctx.strokeStyle=color; ctx.globalAlpha=0.9;
+        ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+        // flecha
+        const ang=Math.atan2(y2-y1,x2-x1); const size=12;
+        ctx.beginPath(); ctx.moveTo(x2,y2);
+        ctx.lineTo(x2 - size*Math.cos(ang-Math.PI/6), y2 - size*Math.sin(ang-Math.PI/6));
+        ctx.lineTo(x2 - size*Math.cos(ang+Math.PI/6), y2 - size*Math.sin(ang+Math.PI/6));
+        ctx.closePath(); ctx.fillStyle=color; ctx.fill();
+        // anillo destino
+        ctx.beginPath(); ctx.arc(x2,y2, cell*0.32, 0, Math.PI*2); ctx.strokeStyle='rgba(80,160,255,.55)'; ctx.lineWidth=3; ctx.stroke();
+        ctx.restore();
+      }
+
+      function previewMLMove(obj){
+        const canvas = document.getElementById('mlBoard');
+        const hint = document.getElementById('mlBoardHint');
+        if(!canvas){ return; }
+        const mv = obj?.move||null;
+        const b = initialBoard();
+        drawBoardCanvas(canvas, b);
+        if(!mv){ if(hint) hint.textContent='Este patrón no especifica una jugada única.'; return; }
+        const ft = findMoveOnBoard(b, true, mv);
+        if(!ft){ if(hint) hint.textContent = `No se puede previsualizar ${mv} desde la posición inicial.`; return; }
+        drawArrowOnBoard(canvas, ft.from, ft.to);
+        if(hint) hint.textContent = `Sugerencia: ${mv}`;
+      }
+
+      // UI: estado y acciones
+      function setStatus(text){ $('#status').textContent = text; }
+      function setProgress(done,total){
+        const pc = total? Math.round((done/total)*100):0;
+        $('#progressText').textContent = total? `Cargando meses: ${done}/${total} (${pc}%)` : '—';
+        $('#progressBar').style.width = pc+'%';
+      }
+
+      async function loadUser(username){
+        destroyCharts();
+        setStatus('Buscando perfil…');
+        $('#profileName').textContent='Perfil';
+        $('#playerCountry').textContent='—';
+        $('#playerJoined').textContent='—';
+        $('#playerFollowers').textContent='— seguidores';
+        ['bullet','blitz','rapid','daily'].forEach(k=>{
+          $('#stat-'+k).textContent='—';
+          $('#rec-'+k).textContent='—';
+        });
+        setProgress(0,0);
+
+        // Perfil y stats
+        let profile, stats;
+        try{
+          profile = await getJSON(API.profile(username));
+          stats = await getJSON(API.stats(username));
+        }catch(e){
+          console.error(e);
+          alert('No se pudo cargar el perfil/stats. Verifica el usuario.');
+          setStatus('Error');
+          return;
+        }
+        $('#profileName').textContent = profile.name || profile.username || username;
+        $('#playerCountry').textContent = (profile.country? profile.country.split('/').pop().toUpperCase(): '—');
+        $('#playerJoined').textContent = profile.joined? ('Miembro desde '+ new Date(profile.joined*1000).toLocaleDateString()):'—';
+        $('#playerFollowers').textContent = (profile.followers!=null? fmt.format(profile.followers):'—') + ' seguidores';
+
+        const setModeStat = (key, elStat, elRec) => {
+          const s = stats['chess_'+key] || stats[key];
+          if(!s){ $('#'+elStat).textContent='—'; $('#'+elRec).textContent='—'; return; }
+          const last = s.last?.rating || s.last?.rd || s.last || null;
+          const rec = s.record ? s.record : s.records || null;
+          $('#'+elStat).textContent = last!=null? fmt.format(last):'—';
+          if(rec) $('#'+elRec).textContent = `${fmt.format(rec.win||0)}W ${fmt.format(rec.draw||0)}D ${fmt.format(rec.loss||0)}L`;
+        };
+        setModeStat('bullet','stat-bullet','rec-bullet');
+        setModeStat('blitz','stat-blitz','rec-blitz');
+        setModeStat('rapid','stat-rapid','rec-rapid');
+        setModeStat('daily','stat-daily','rec-daily');
+
+        // Archivos de partidas (todas los meses)
+        setStatus('Listando archivos…');
+        let archives;
+        try{
+          const a = await getJSON(API.archives(username));
+          archives = a.archives || [];
+        }catch(e){ alert('No se pudo listar archivos de partidas'); setStatus('Error'); return; }
+        if(!archives.length){ alert('No hay partidas públicas para este usuario'); setStatus('Sin datos'); return; }
+
+        // Filtro de rango
+        const range = $('#rangeFilter').value;
+        let filteredArchives = archives.slice();
+        if(range!=='all'){
+          const months = range==='12m'?12: range==='6m'?6:3;
+          filteredArchives = archives.slice(-months);
+        }
+
+        // Descarga concurrente de meses
+        setStatus('Descargando partidas…');
+        setProgress(0, filteredArchives.length);
+        const conc = parseInt($('#concurrency').value,10)||8;
+        const monthsData = await pMap(filteredArchives, async (url)=>{
+          try{
+            return await getJSON(url);
+          }catch(e){ console.warn('Fallo mes', url, e); return {games:[]} }
+        }, {concurrency: conc, onProgress: (d,t)=> setProgress(d,t)});
+
+        // Normalizar todo
+        setStatus('Procesando…');
+        const allGames = monthsData.flatMap(m=> normalizeGames(m, username));
+
+        // Agregar y pintar
+        const mode = $('#modeFilter').value;
+        const agg = aggregate(allGames, {mode});
+        renderAll(agg);
+        setStatus(`Listo • ${fmt.format(agg.kpis.total)} partidas`);
+
+        // Guardar dataset para exportar y re-render con filtros
+        window.__DATASET__ = allGames;
+        window.__OPENINGS__ = agg.openings || [];
+      }
+
+      function rerenderFromDataset(){
+        const games = window.__DATASET__||[];
+        destroyCharts();
+        const mode = $('#modeFilter').value;
+        const range = $('#rangeFilter').value;
+        let sinceMs = null;
+        if(range!=='all'){
+          const months = range==='12m'?12: range==='6m'?6:3;
+          const d = new Date(); d.setMonth(d.getMonth()-months); sinceMs = d.getTime();
+        }
+        const agg = aggregate(games, {mode, sinceMs});
+        renderAll(agg);
+        setStatus(`Listo • ${fmt.format(agg.kpis.total)} partidas filtradas`);
+      }
+
+      // Eventos UI
+      $('#loadBtn').addEventListener('click', async ()=>{
+        const u = $('#username').value.trim();
+        if(!u){ alert('Introduce tu usuario de Chess.com'); return; }
+        localStorage.setItem('cc_username', u);
+        await loadUser(u);
+      });
+      $('#clearBtn').addEventListener('click', ()=>{ cacheClear(); alert('Caché local de datos limpiada'); });
+      $('#clearLLMBtn').addEventListener('click', llmCacheClear);
+      $('#modeFilter').addEventListener('change', rerenderFromDataset);
+      $('#rangeFilter').addEventListener('change', rerenderFromDataset);
+      $('#xAxisMode').addEventListener('change', rerenderFromDataset);
+      $('#colorMode').addEventListener('change', ()=>{
+        const cm = $('#colorMode').value;
+        $('#gapDays').disabled = (cm!=='date');
+        rerenderFromDataset();
+      });
+      $('#gapDays').addEventListener('input', rerenderFromDataset);
+      $('#sessionGap').addEventListener('input', rerenderFromDataset);
+      $('#concurrency').addEventListener('change', ()=>{ /* solo afecta próxima carga */});
+      $('#exportBtn').addEventListener('click', ()=>{
+        const data = window.__DATASET__||[];
+        const blob = new Blob([JSON.stringify(data,null,2)], {type:'application/json'});
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'chesscom_'+($('#username').value||'usuario')+'.json'; a.click();
+      });
+
+      // Autocarga si hay usuario guardado
+      window.addEventListener('load', ()=>{
+        const u = localStorage.getItem('cc_username');
+        if(u){ $('#username').value=u; }
+        $('#gapDays').disabled = ($('#colorMode').value!=='date');
+      });
+
+      // Advisor chat handlers
+      (function(){
+        const input = document.getElementById('advisorInput');
+        const send = document.getElementById('advisorSend');
+        const list = document.getElementById('advisorChatList');
+        // LLM config inputs
+        const apiBaseEl = document.getElementById('dsApiBase');
+        const apiKeyEl = document.getElementById('dsApiKey');
+        const modelEl = document.getElementById('dsModel');
+        const useEl = document.getElementById('dsUseLLM');
+
+        // Load/save settings
+        try {
+          apiBaseEl.value = localStorage.getItem('ds_api_base') || '/api/deepseek';
+          modelEl.value = localStorage.getItem('ds_model') || 'deepseek-chat';
+          useEl.checked = (localStorage.getItem('ds_use')||'false') === 'true';
+          // Never auto-fill key into DOM value for safety; only keep in memory if present
+        } catch {}
+        apiBaseEl?.addEventListener('input', ()=> localStorage.setItem('ds_api_base', apiBaseEl.value.trim()));
+        modelEl?.addEventListener('change', ()=> localStorage.setItem('ds_model', modelEl.value));
+        useEl?.addEventListener('change', ()=> localStorage.setItem('ds_use', String(!!useEl.checked)));
+
+        let ctx = null; // {name, eco, color}
+        // Keep reference to core selector to avoid recursion
+        const selectCore = window.selectOpeningForAdvisor || selectOpeningForAdvisor;
+        window.selectOpeningForAdvisor = (name, eco, color) => {
+          ctx = {name, eco, color};
+          try { selectCore(name, eco, color); } catch(e){ console.warn('advisor core error', e); }
+        };
+        const esc = (s)=> (''+s).replace(/[&<>"']/g, c=> ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));
+        function append(role, text){
+          const wrap=document.createElement('div');
+          wrap.className='msg '+role+' entering';
+          wrap.innerHTML = `<div class="bubble">${esc(text)}</div>`;
+          list.appendChild(wrap);
+          list.scrollTop=list.scrollHeight;
+          requestAnimationFrame(()=> wrap.classList.remove('entering'));
+        }
+        function showTyping(){
+          const wrap=document.createElement('div');
+          wrap.className='msg bot typing';
+          wrap.innerHTML = `<div class="bubble"><span class="dot"></span><span class="dot"></span><span class="dot"></span></div>`;
+          list.appendChild(wrap);
+          list.scrollTop=list.scrollHeight;
+          return wrap;
+        }
+        async function ask(){
+          const q = (input.value||'').trim(); if(!q) return;
+          append('user', q); input.value='';
+          const typing = showTyping();
+          try{
+            if(useEl?.checked){
+              const ans = await askDeepseekLLM(q, ctx, {
+                base: (apiBaseEl?.value||'').trim(),
+                key: (apiKeyEl?.value||'').trim(),
+                model: (modelEl?.value||'deepseek-chat')
+              });
+              typing.remove();
+              append('bot', ans || 'Sin respuesta del LLM.');
+            } else {
+              const ans = answerAdvisorQuestion(q, ctx);
+              typing.remove();
+              append('bot', ans);
+            }
+          } catch(e){
+            console.warn(e);
+            typing.remove();
+            const ans = answerAdvisorQuestion(q, ctx);
+            append('bot', ans + ' (LLM no disponible)');
+          }
+        }
+        if(send) send.addEventListener('click', ask);
+        if(input) input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
+      })();
+
+      function answerAdvisorQuestion(q, ctx){
+        const gamesAll = window.__DATASET__||[];
+        // Try to detect opening by name
+        const ql = q.toLowerCase();
+        let open = null;
+        const openings = window.__OPENINGS__||[];
+        for(const o of openings){ if((o.opening||'').toLowerCase().includes(ql) && o.games>=5){ open = o; break; } }
+        const baseGames = open? gamesAll.filter(g=> (g.opening===open.opening || g.eco===open.eco) && g.meColor===open.color)
+                               : ctx? gamesAll.filter(g=> (g.opening===ctx.name || g.eco===ctx.eco) && g.meColor===ctx.color)
+                                    : gamesAll.slice();
+        // Detect move token like h4, e4, Nf3, Bc4, O-O, exd5
+        const mvMatch = q.match(/\b(O-O-O|O-O|0-0-0|0-0|[KQRBN]?[a-h]x?[a-h][1-8]|[a-h][1-8]|[a-h]x[a-h][1-8])\b/i);
+        if(mvMatch){
+          const tok = normalizeSANLocal(mvMatch[1].replace(/0-0/g,'O-O').replace(/0-0-0/g,'O-O-O'));
+          const side = ctx?.color || open?.color || null;
+          const stats = moveStatsInGames(baseGames, tok, side);
+          if(stats && stats.count>=5){
+            const pct = Math.round(stats.wr*100);
+            const base = Math.round(stats.avg*100);
+            const sign = (pct-base)>=0? '+' : '';
+            return `En ${stats.count} partidas ${side||''} con ${open?open.opening: (ctx?.name||'esta apertura')}: mover ${tok} tuvo ${pct}% victorias (${sign}${pct-base}pp vs media ${base}%). Mejor en jugadas: ${stats.bestPlies.join(', ')}.`;
+          }
+          return `No tengo suficiente muestra para ${tok} en este contexto.`;
+        }
+        // General opening question
+        if(open){
+          const ctx2 = {name:open.opening, eco:open.eco, color:open.color};
+          const subset = gamesAll.filter(g=> (g.opening===open.opening || g.eco===open.eco) && g.meColor===open.color);
+          const summary = summarizeOpening(subset, ctx2);
+          return summary;
+        }
+        // Fallback: global summary
+        return 'Selecciona una apertura en la tabla o pregunta por una apertura/movimiento concreto (ej.: "¿Qué tal me va con h4 en la Siciliana?")';
+      }
+
+      async function askDeepseekLLM(q, ctx, {base, key, model}){
+        const isProxy = (base||'').trim().startsWith('/');
+        if(!base || (!isProxy && !key)) throw new Error('DeepSeek API no configurada');
+        const gamesAll = window.__DATASET__||[];
+        const openings = window.__OPENINGS__||[];
+        // Context selection similar to heuristic
+        const ql = (q||'').toLowerCase();
+        let open = null;
+        for(const o of openings){ if((o.opening||'').toLowerCase().includes(ql) && o.games>=5){ open = o; break; } }
+        const baseGames = open? gamesAll.filter(g=> (g.opening===open.opening || g.eco===open.eco) && g.meColor===open.color)
+                               : ctx? gamesAll.filter(g=> (g.opening===ctx.name || g.eco===ctx.eco) && g.meColor===ctx.color)
+                                    : gamesAll.slice(0, 800);
+        // Build small stats snapshot
+        const snap = buildAdvisorSnapshot(baseGames, open || ctx || {});
+        const sys = 'Eres un entrenador de ajedrez. Responde en español, claro y accionable. Usa solo los datos proporcionados. Da consejos concretos y ejemplos de planes/movidas típicos en 3-5 frases. Si faltan datos, dilo explícitamente.';
+        const usr = `Pregunta: ${q}\nContexto apertura: ${JSON.stringify({opening: (open?.opening || ctx?.name || null), eco: (open?.eco || ctx?.eco || null), color: (open?.color || ctx?.color || null)})}\nResumen de mis datos (agregados):\n${JSON.stringify(snap).slice(0, 7000)}`;
+        const url = base.replace(/\/$/,'') + '/chat/completions';
+        const body = { model: model||'deepseek-chat', messages: [ {role:'system', content: sys}, {role:'user', content: usr} ], temperature: 0.3 };
+        // Cache key: prompt digest + model
+        const digest = (typeof stableHash==='function') ? stableHash(JSON.stringify({q,ctx,snap})) : String(q).slice(0,64);
+        const ck = 'chat:' + (model||'deepseek-chat') + ':' + digest;
+        const cached = llmCacheGet(ck); if(cached && cached.d) return cached.d;
+        const headers = isProxy ? {'Content-Type':'application/json'} : {'Content-Type':'application/json','Authorization':'Bearer '+key};
+        const res = await fetch(url, { method:'POST', headers, body: JSON.stringify(body) });
+        if(!res.ok) throw new Error('HTTP '+res.status);
+        const data = await res.json();
+        const text = data?.choices?.[0]?.message?.content || '';
+        if(text) llmCacheSet(ck, text.trim());
+        return text.trim();
+      }
+
+      function buildAdvisorSnapshot(games, meta){
+        const total = games.length;
+        const wins = games.filter(g=> normalizeResult(g.result,g.meColor)==='w').length;
+        const wr = total? wins/total : 0;
+        const byPly = {};
+        for(const g of games){
+          const mv = g.movesSAN||[]; const res = normalizeResult(g.result,g.meColor);
+          for(let i=0;i<Math.min(12,mv.length); i++){
+            const ply=i+1; const side=(ply%2===1)?'white':'black';
+            if(meta?.color && ((meta.color==='white' && side!=='white') || (meta.color==='black' && side!=='black'))) continue;
+            const san = normalizeSANLocal(mv[i]);
+            if(!byPly[ply]) byPly[ply] = {};
+            if(!byPly[ply][san]) byPly[ply][san] = {c:0,w:0};
+            byPly[ply][san].c++; if(res==='w') byPly[ply][san].w++;
+          }
+        }
+        // Extract top signals per ply
+        const signals = [];
+        for(const k of Object.keys(byPly)){
+          const ply = parseInt(k,10);
+          const arr = Object.entries(byPly[k]).map(([m,st])=>({m, c:st.c, wr: st.c? st.w/st.c:0})).filter(x=>x.c>=4).sort((a,b)=> b.c-a.c).slice(0,5);
+          signals.push({ply, moves: arr});
+        }
+        return { total, winrate: wr, signals };
+      }
+
+      // ========= ML Random Forest Lite =========
+      function buildMLDataset(games){
+        const samples = [];
+        for(const g of games){
+          const label = normalizeResult(g.result, g.meColor)==='w' ? 1:0;
+          const seq = (g.movesSAN||[]);
+          const cats = classifyOpening(g.opening, g.eco, seq);
+          for(let i=0;i<Math.min(seq.length, 20); i++){
+            const ply = i+1; const side=(ply%2===1)?'white':'black';
+            if(side !== g.meColor) continue; // solo jugadas del usuario
+            const san = normalizeSANLocal(seq[i]);
+            const prevSan = i>0 ? normalizeSANLocal(seq[i-1]) : null;
+            const f = moveFeatures(san);
+            samples.push({ y: label, f: { ply, san, prevSan, cat: cats[0]||'—', file: f.file, rank: f.rank, piece: f.piece, cap: f.cap, castle: f.castle } });
+          }
+        }
+        return samples;
+      }
+
+      function moveFeatures(san){
+        const out={piece:'P', cap: /x/.test(san), castle: /^O-O/.test(san), file:null, rank:null};
+        if(/^[KQRBN]/.test(san)) out.piece = san[0];
+        const m = san.slice(-2);
+        if(/^[a-h][1-8]$/.test(m)){ out.file = m[0]; out.rank = parseInt(m[1],10); }
+        return out;
+      }
+
+      function giniImpurity(countPos, countNeg){
+        const n = countPos + countNeg; if(n===0) return 0;
+        const p = countPos/n; const q = 1-p;
+        return 1 - (p*p + q*q);
+      }
+
+      function bestSplit(samples, featSpace, maxCats=20){
+        const N = samples.length; if(N<8) return null;
+        // Precompute frequencies
+        const freq = (key) => {
+          const map=new Map(); for(const s of samples){ const v = s.f[key]; if(v==null) continue; map.set(v, (map.get(v)||0)+1); }
+          return [...map.entries()].sort((a,b)=> b[1]-a[1]).slice(0, maxCats).map(([v])=>v);
+        };
+        const topSan=freq('san'), topPrev=freq('prevSan'), topCat=freq('cat'), topPiece=freq('piece'), topFile=freq('file');
+        const thresholds=[3,5,7,9];
+        const candidates=[];
+        topSan.forEach(v=> candidates.push({type:'eq', key:'san', val:v, desc:`mover ${v}`}));
+        topPrev.forEach(v=> candidates.push({type:'eq', key:'prevSan', val:v, desc:`rival jugó ${v}`}));
+        topCat.forEach(v=> candidates.push({type:'eq', key:'cat', val:v, desc:`categoría ${v}`}));
+        topPiece.forEach(v=> candidates.push({type:'eq', key:'piece', val:v, desc:`pieza ${v}`}));
+        topFile.forEach(v=> candidates.push({type:'eq', key:'file', val:v, desc:`archivo ${v}`}));
+        thresholds.forEach(t=> candidates.push({type:'le', key:'ply', val:t, desc:`ply ≤ ${t}`}));
+        thresholds.forEach(t=> candidates.push({type:'le', key:'rank', val:t, desc:`fila ≤ ${t}`}));
+
+        // Random feature subset
+        const cand = shuffle(candidates).slice(0, Math.min(40, candidates.length));
+        let best=null; let bestGain=-1; let bestLeft=null; let bestRight=null;
+        const sumY = samples.reduce((s,a)=>s+a.y,0); const sumN = N - sumY;
+        const base = giniImpurity(sumY, sumN);
+        for(const c of cand){
+          const left=[]; const right=[];
+          for(const s of samples){ const v=s.f[c.key]; const ok = (c.type==='eq')? (v===c.val) : (v!=null && v<=c.val); (ok? left:right).push(s); }
+          if(left.length<4 || right.length<4) continue;
+          const lp = left.reduce((s,a)=>s+a.y,0); const ln = left.length-lp;
+          const rp = right.reduce((s,a)=>s+a.y,0); const rn = right.length-rp;
+          const g = base - (left.length/N)*giniImpurity(lp,ln) - (right.length/N)*giniImpurity(rp,rn);
+          if(g>bestGain){ bestGain=g; best=c; bestLeft=left; bestRight=right; }
+        }
+        if(!best) return null;
+        return { split: best, left: bestLeft, right: bestRight, gain: bestGain };
+      }
+
+      function trainTree(samples, depth){
+        if(depth<=0 || samples.length<12){
+          const p = samples.reduce((s,a)=>s+a.y,0); const n = samples.length - p; return {leaf:true, n:samples.length, p: p/samples.length};
+        }
+        const sp = bestSplit(samples);
+        if(!sp){ const p = samples.reduce((s,a)=>s+a.y,0); return {leaf:true, n:samples.length, p: p/samples.length}; }
+        return {leaf:false, cond: sp.split, left: trainTree(sp.left, depth-1), right: trainTree(sp.right, depth-1)};
+      }
+
+      function predictTree(tree, x){
+        if(tree.leaf) return tree.p;
+        const c = tree.cond; const v = x[c.key];
+        const goLeft = (c.type==='eq') ? (v===c.val) : (v!=null && v<=c.val);
+        return predictTree(goLeft? tree.left : tree.right, x);
+      }
+
+      function describePath(tree){
+        const paths=[];
+        function walk(node, condObjs, condDescs){
+          if(node.leaf){ paths.push({condsDesc: condDescs.slice(), conds: condObjs.slice(), p: node.p, n: node.n}); return; }
+          const c = node.cond;
+          // true branch
+          walk(node.left, condObjs.concat([{key:c.key, type:c.type, val:c.val, negate:false}]), condDescs.concat([c.desc]));
+          // false branch (negated condition)
+          walk(node.right, condObjs.concat([{key:c.key, type:c.type, val:c.val, negate:true}]), condDescs.concat([`no ${c.desc}`]));
+        }
+        walk(tree, [], []);
+        return paths;
+      }
+
+      function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [a[i],a[j]]=[a[j],a[i]]; } return a; }
+
+      async function trainRandomForestLite(games){
+        const status = document.getElementById('mlStatus');
+        const ulPos = document.getElementById('mlPos');
+        const ulNeg = document.getElementById('mlNeg');
+        ulPos.innerHTML=''; ulNeg.innerHTML=''; status.textContent='Preparando dataset…';
+        const samplesAll = buildMLDataset(games);
+        if(samplesAll.length<200){ status.textContent='Muy pocas muestras para entrenar.'; return; }
+        // Split train/test (determinista por índice) para estimar confianza y evitar sobreajuste
+        const train = [], test = [];
+        for(let i=0;i<samplesAll.length;i++){ (i%3===0? test: train).push(samplesAll[i]); }
+        const samples = train;
+        status.textContent=`Entrenando (muestras ${samples.length}, validación ${test.length})…`;
+        const trees=[]; const T=25;
+        for(let t=0;t<T;t++){
+          // bootstrap sample
+          const boot=[]; for(let i=0;i<samples.length;i++){ boot.push(samples[(Math.random()*samples.length)|0]); }
+          trees.push(trainTree(boot, 2));
+        }
+        // collect paths from all trees
+        const allPaths=[]; trees.forEach(tr=> allPaths.push(...describePath(tr)));
+        // baseline
+        const base = samples.reduce((s,a)=>s+a.y,0)/samples.length;
+        const baseTest = test.length? (test.reduce((s,a)=>s+a.y,0)/test.length) : base;
+        function satisfies(s, conds){
+          for(const c of conds){
+            const v = s.f[c.key];
+            let ok = (c.type==='eq') ? (v===c.val) : (v!=null && v<=c.val);
+            if(c.negate) ok = !ok;
+            if(!ok) return false;
+          }
+          return true;
+        }
+        const scored = allPaths
+          .filter(p=> p.n>=20)
+          .map(p=> {
+            // evaluar en holdout
+            let nTest=0, wTest=0;
+            for(const s of test){ if(satisfies(s, p.conds)){ nTest++; if(s.y===1) wTest++; } }
+            const pTest = nTest? wTest/nTest : null;
+            return {
+              text: p.condsDesc.join(' y '), n:p.n, p: p.p, delta: p.p - base,
+              conds: p.conds, nTest, pTest, deltaTest: (pTest==null? null : pTest - baseTest)
+            };
+          })
+          .sort((a,b)=> Math.abs(b.delta) - Math.abs(a.delta));
+
+        // Pick top signals with friendlier phrasing
+        const topPos = scored.filter(s=> s.delta>0.08).slice(0,5);
+        const topNeg = scored.filter(s=> s.delta<-0.08).slice(0,5);
+
+        const human = (s) => {
+          // s.text is a chain like "mover e4 y ply ≤ 5"; make it sentence-like
+          const txt = s.text
+            .replace(/\bply ≤ /g, 'en los primeros ')
+            .replace(/\bmover /g, 'jugar ')
+            .replace(/\bprevSan\b/g, 'rival jugó')
+            .replace(/\bcat(e|é)gor(í|i)a /g, '')
+            .replace(/\barchivo /g, 'columna ')
+            .replace(/\bfila /g, 'fila ')
+            .replace(/\bno /g, 'evitando ');
+          const wr = Math.round(s.p*100), baseWR = Math.round(base*100);
+          const moveCond = (s.conds||[]).find(c=> c.key==='san' && !c.negate);
+          const move = moveCond? (''+moveCond.val) : null;
+          let conf = 'Baja'; let warn=false;
+          if(s.nTest!=null && s.pTest!=null){
+            const d = Math.round((s.deltaTest||0)*100);
+            const sameSign = (s.delta>0 && (s.deltaTest||0)>0) || (s.delta<0 && (s.deltaTest||0)<0);
+            if(sameSign && s.nTest>=20 && Math.abs(d)>=7) conf = 'Alta';
+            else if(sameSign && s.nTest>=12 && Math.abs(d)>=4) conf = 'Media';
+            else conf = 'Baja';
+            warn = !sameSign || (s.nTest<8);
+          }
+          return { line: txt, wr, baseWR, n: s.n, delta: Math.round(s.delta*100), conf, warn, move };
+        };
+
+        const nice = (obj, good) => {
+          const li = document.createElement('li');
+          li.className = 'ml-item ' + (good? 'good':'bad');
+          const icon = good? '✅' : '⚠️';
+          const color = good? `hsla(130,70%,40%,.14)` : `hsla(0,85%,45%,.12)`;
+          li.style.background = color;
+          li.style.borderLeft = good? '4px solid hsl(130,70%,40%)' : '4px solid hsl(0,85%,45%)';
+          li.style.padding = '8px 10px'; li.style.margin = '6px 0'; li.style.borderRadius='8px';
+          li.innerHTML = `<div><strong>${icon} ${good? 'Funciona bien:':'Evita:'}</strong> ${obj.line}</div>`+
+                         `<div class="small muted">Tus victorias: ${obj.wr}% (media ${obj.baseWR}%) • Muestras: ${obj.n}</div>`;
+          if(obj.move){
+            li.style.cursor='pointer';
+            li.title = `Previsualizar ${obj.move}`;
+            li.addEventListener('click', ()=> previewMLMove(obj));
+          }
+          return li;
+        };
+
+        ulPos.innerHTML=''; ulNeg.innerHTML='';
+        const posH = topPos.map(human); const negH = topNeg.map(human);
+        posH.forEach(o=> ulPos.appendChild(nice(o, true)));
+        negH.forEach(o=> ulNeg.appendChild(nice(o, false)));
+        const warnAny = posH.concat(negH).some(o=>o.warn);
+        status.textContent = `Tu media: ${Math.round(base*100)}% • Señales positivas: ${topPos.length} • Señales a vigilar: ${topNeg.length}` + (warnAny? ' • Algunas señales podrían estar sobreajustadas':'');
+      }
+
+      // Hook up Train button
+      (function(){
+        const btn = document.getElementById('mlTrain');
+        if(!btn) return;
+        btn.addEventListener('click', async ()=>{
+          // Use current filters
+          const games = window.__DATASET__||[];
+          const mode = document.getElementById('modeFilter')?.value || 'all';
+          const range = document.getElementById('rangeFilter')?.value || 'all';
+          let sinceMs = null;
+          if(range!=='all'){
+            const months = range==='12m'?12: range==='6m'?6:3; const d=new Date(); d.setMonth(d.getMonth()-months); sinceMs=d.getTime();
+          }
+          const subset = games.filter(g=> g.rules==='chess' && (mode==='all' || g.timeClass===mode) && (!sinceMs || !g.endTime || g.endTime>=sinceMs));
+          await trainRandomForestLite(subset);
+        });
+      })();
+
+      function moveStatsInGames(games, token, side){
+        const byPly = new Map(); let total=0, wins=0; const plies=[];
+        for(const g of games){
+          const res = normalizeResult(g.result, g.meColor); total++; if(res==='w') wins++;
+          const mv = g.movesSAN||[];
+          for(let i=0;i<mv.length;i++){
+            const ply=i+1; const s=(ply%2===1)? 'white':'black'; if(side && s!==side) continue;
+            const san = normalizeSANLocal(mv[i]); if(san!==token) continue;
+            if(!byPly.has(ply)) byPly.set(ply, {c:0,w:0});
+            const st=byPly.get(ply); st.c++; if(res==='w') st.w++;
+            if(!plies.includes(ply)) plies.push(ply);
+          }
+        }
+        const avg = total? wins/total:0;
+        // flatten
+        let count=0, w=0; const bestPlies=[];
+        for(const [ply,st] of byPly){ count+=st.c; w+=st.w; }
+        if(count===0) return null;
+        // choose plies where enough data
+        plies.sort((a,b)=>a-b);
+        const top = plies.filter(p=> (byPly.get(p).c)>=3).slice(0,3).map(p=> Math.ceil(p/2));
+        return {count, wr: w/count, avg, bestPlies: top};
+      }
+
+      function summarizeOpening(games, ctx){
+        if(!games.length) return 'Sin partidas suficientes para esa apertura.';
+        const w = games.filter(g=> normalizeResult(g.result,g.meColor)==='w').length;
+        const wr = Math.round((w/games.length)*100);
+        // naively reuse renderAdvisor logic to get top/bottom patterns
+        const meta = ctx; const byPly = new Map();
+        for(const g of games){
+          const mv = g.movesSAN||[];
+          for(let i=0;i<mv.length;i++){
+            const ply = i+1; const side = (ply%2===1)? 'white':'black';
+            if((meta.color==='white' && side!=='white') || (meta.color==='black' && side!=='black')) continue;
+            const san = normalizeSANLocal(mv[i]); if(!byPly.has(ply)) byPly.set(ply, {});
+            const slot = byPly.get(ply); if(!slot[san]) slot[san]={c:0,w:0}; slot[san].c++; if(normalizeResult(g.result,g.meColor)==='w') slot[san].w++;
+          }
+        }
+        const hints=[]; for(const [ply,slot] of byPly){ const arr=Object.entries(slot).map(([m,st])=>({m,wr:st.c?st.w/st.c:0,c:st.c})).filter(x=>x.c>=4).sort((a,b)=>b.wr-a.wr); if(arr.length>=2){ hints.push({ply, good:arr[0], bad:arr[arr.length-1]}); } }
+        hints.sort((a,b)=>a.ply-b.ply);
+        const lines = [`${ctx.name||'Apertura'} (${ctx.eco||'—'}) con ${ctx.color==='white'?'blancas':'negras'}: ${wr}% victorias en ${games.length} partidas.`];
+        hints.slice(0,3).forEach(h=>{
+          const j=Math.ceil(h.ply/2); const d = Math.round((h.good.wr - h.bad.wr)*100);
+          lines.push(`Jugada ${j}: mejor suele ser ${h.good.m} (${Math.round(h.good.wr*100)}%), peor ${h.bad.m} (${Math.round(h.bad.wr*100)}%) [Δ ${d}pp].`);
+        });
+        return lines.join(' ');
+      }
+
+      // ========= Explorador de apertura =========
+      let EXP = { ctx:null, node:[], tree:null };
+
+      function buildOpeningTree(games, ctx){
+        // Tree: Map key path -> { next: Map move -> {c,w,d,l} }
+        const T = new Map();
+        const norm = (m)=> normalizeSANLocal(m||'');
+        for(const g of games){
+          const res = normalizeResult(g.result, g.meColor);
+          const seq = (g.movesSAN||[]).map(norm);
+          for(let i=0;i<Math.min(seq.length, 24); i++){
+            const key = seq.slice(0,i).join(' ');
+            const move = seq[i];
+            if(!T.has(key)) T.set(key, new Map());
+            const next = T.get(key);
+            if(!next.has(move)) next.set(move, {c:0,w:0,d:0,l:0, ply:i+1});
+            const s = next.get(move); s.c++; s[res]++;
+          }
+        }
+        return T;
+      }
+
+      function nodeStats(tree, path, meta){
+        const key = path.join(' ');
+        const next = tree.get(key) || new Map();
+        const arr = Array.from(next.entries()).map(([m,st])=> ({move:m, c:st.c, w:st.w, d:st.d, l:st.l, ply:st.ply, wr: st.c? st.w/st.c:0}));
+        // If meta.color is set, filter to your side to move at this ply
+        const yourTurn = (st)=> {
+          if(!meta?.color) return true;
+          const isWhitePly = (st.ply % 2)===1; // White plays on odd plies
+          return (meta.color==='white') ? isWhitePly : !isWhitePly;
+        };
+        const mine = arr.filter(yourTurn).sort((a,b)=> b.c - a.c);
+        const opp = arr.filter(st=> !yourTurn(st)).sort((a,b)=> b.c - a.c);
+        return {mine, opp};
+      }
+
+      function renderExplorer(){
+        const board = document.getElementById('expBoard');
+        const fenEl = document.getElementById('expFen');
+        const evalEl = document.getElementById('expEval');
+        const titleEl = document.getElementById('expTitle');
+        const pathEl = document.getElementById('expPath');
+        const movesEl = document.getElementById('expMoves');
+        const backBtn = document.getElementById('expBack');
+        const resetBtn = document.getElementById('expReset');
+        if(!EXP.ctx || !EXP.tree) { titleEl.textContent='—'; pathEl.textContent='Selecciona una apertura en la tabla.'; movesEl.innerHTML=''; drawBoardCanvas(board, initialBoard()); fenEl.textContent=''; evalEl.textContent=''; return; }
+
+        // Build position
+        const pos = buildPositionFromSAN(EXP.node, 64);
+        drawBoardCanvas(board, pos);
+        const fen = buildFEN(pos, (EXP.node.length%2)===0 ? 'w':'b');
+        fenEl.textContent = fen;
+        titleEl.textContent = `${EXP.ctx.name} (${EXP.ctx.eco})`;
+        pathEl.textContent = EXP.node.join(' ')
+          || 'Inicio';
+
+        const {mine, opp} = nodeStats(EXP.tree, EXP.node, EXP.ctx);
+        movesEl.innerHTML = '';
+        const mkBadge = (e, total)=> {
+          const usage = total? Math.round((e.c/total)*100) : 0;
+          const pct = Math.round(e.wr*100);
+          const hue = Math.max(0, Math.min(120, Math.round(e.wr*120)));
+          const wrap = document.createElement('button');
+          wrap.className='ghost';
+          wrap.style.position='relative';
+          wrap.style.margin='4px'; wrap.style.padding='6px 8px'; wrap.style.borderRadius='8px';
+          wrap.style.overflow='hidden';
+          // heat bar (color = tu % victoria, ancho = % de uso)
+          const heat = document.createElement('div');
+          heat.style.position='absolute'; heat.style.left='0'; heat.style.top='0'; heat.style.bottom='0';
+          heat.style.width = usage+"%";
+          heat.style.background = `linear-gradient(90deg, hsla(${hue},85%,45%,.35), hsla(${hue},85%,45%,.15))`;
+          heat.style.pointerEvents='none';
+          wrap.appendChild(heat);
+          const label = document.createElement('span');
+          label.style.position='relative'; label.style.zIndex='1';
+          label.textContent = `${e.move} • uso ${usage}% • tú ${pct}%`;
+          wrap.appendChild(label);
+          wrap.addEventListener('click', ()=>{ EXP.node = EXP.node.concat([e.move]); renderExplorer(); engineEval(fenEl, evalEl, fen); });
+          return wrap;
+        };
+        const headMine = document.createElement('div'); headMine.className='small muted'; headMine.textContent='Tus opciones más jugadas:';
+        const headOpp = document.createElement('div'); headOpp.className='small muted'; headOpp.style.marginTop='8px'; headOpp.textContent='Respuestas del rival:';
+        const legend = document.createElement('div'); legend.className='small muted'; legend.style.margin='6px 0 2px'; legend.textContent = 'Color = tu % de victoria (verde↔rojo) • Barra = % de uso';
+        movesEl.appendChild(headMine);
+        const sumMine = mine.reduce((s,a)=> s+a.c, 0);
+        (mine.slice(0,8)).forEach(e=> movesEl.appendChild(mkBadge(e, sumMine)));
+        movesEl.appendChild(headOpp);
+        const sumOpp = opp.reduce((s,a)=> s+a.c, 0);
+        (opp.slice(0,8)).forEach(e=> movesEl.appendChild(mkBadge(e, sumOpp)));
+        movesEl.appendChild(legend);
+
+        backBtn.onclick = ()=>{ if(EXP.node.length>0){ EXP.node.pop(); renderExplorer(); engineEval(fenEl, evalEl, buildFEN(buildPositionFromSAN(EXP.node,64), (EXP.node.length%2)===0?'w':'b')); } };
+        resetBtn.onclick = ()=>{ EXP.node = []; renderExplorer(); engineEval(fenEl, evalEl, buildFEN(buildPositionFromSAN(EXP.node,64), 'w')); };
+
+        engineEval(fenEl, evalEl, fen);
+      }
+
+      function startExplorerFor(opening, eco, color){
+        const games = (window.__DATASET__||[]).filter(g=> (g.opening===opening || g.eco===eco) && g.meColor===color);
+        EXP.ctx = {name:opening, eco, color};
+        EXP.tree = buildOpeningTree(games, EXP.ctx);
+        EXP.node = [];
+        renderExplorer();
+      }
+
+      // Minimal FEN from board matrix (no castling tracking)
+      function buildFEN(b, turn){
+        const rows=[]; for(let r=0;r<8;r++){ let s='', n=0; for(let c=0;c<8;c++){ const p=b[r][c]; if(!p){ n++; } else { if(n){ s+=String(n); n=0; } s+=p; } } if(n) s+=String(n); rows.push(s); }
+        return rows.join('/') + ' ' + (turn||'w') + ' - - 0 1';
+      }
+
+      // Optional engine eval (Stockfish worker at src/stockfish.js)
+      let ENGINE = {w:null, ready:false};
+      function ensureEngine(){
+        try{
+          if(ENGINE.w) return ENGINE.ready;
+          if(typeof window.STOCKFISH==='function'){ ENGINE.w = window.STOCKFISH(); }
+          else { ENGINE.w = new Worker('src/stockfish.js'); }
+          ENGINE.w.onmessage = (e)=>{ if((''+e.data).startsWith('uciok')) ENGINE.ready=true; };
+          ENGINE.w.postMessage('uci'); ENGINE.w.postMessage('isready');
+          return true;
+        }catch{ return false; }
+      }
+      function engineEval(fenEl, evalEl, fen){
+        if(!ensureEngine()) { evalEl.textContent = 'Motor no disponible'; return; }
+        try{
+          ENGINE.w.onmessage = (e)=>{
+            const line = ''+e.data;
+            if(line.startsWith('bestmove')) return;
+            const m = line.match(/score (cp|mate) (-?\d+)/);
+            if(m){
+              const kind = m[1]; const val = parseInt(m[2],10);
+              evalEl.textContent = kind==='cp' ? `Eval: ${val/100}` : `Mate en ${val}`;
+            }
+          };
+          ENGINE.w.postMessage('ucinewgame');
+          ENGINE.w.postMessage(`position fen ${fen}`);
+          ENGINE.w.postMessage('go depth 12');
+        }catch{ evalEl.textContent = 'Motor no disponible'; }
+      }
+
+      // Sorting for openings table
+      function attachOpeningsSorting(table){
+        if(!table || table.dataset.sortAttached==='1') return;
+        table.dataset.sortAttached = '1';
+        const ths = Array.from(table.querySelectorAll('thead th'));
+        ths.forEach((th, idx) => {
+          th.addEventListener('click', () => sortBy(idx));
+        });
+        function sortBy(idx){
+          const tbody = table.querySelector('tbody');
+          const rows = Array.from(tbody.querySelectorAll('tr'));
+          const prevIdx = parseInt(table.dataset.sortIdx||'-1',10);
+          let dir = table.dataset.sortDir || 'desc';
+          if(prevIdx === idx){ dir = (dir==='asc')? 'desc':'asc'; } else { dir='desc'; }
+          table.dataset.sortIdx = String(idx);
+          table.dataset.sortDir = dir;
+          ths.forEach((th,i)=>{ th.classList.remove('sort-asc','sort-desc'); if(i===idx) th.classList.add(dir==='asc'?'sort-asc':'sort-desc'); });
+          const getVal = (tr) => {
+            const tds = tr.children;
+            let txt = tds[idx].textContent.trim();
+            if(idx>=3){ // numeric columns
+              txt = txt.replace(/[^0-9.,-]/g,'').replace(',', '.');
+              const num = parseFloat(txt);
+              return isNaN(num)? -Infinity : num;
+            }
+            return txt.toLowerCase();
+          };
+          rows.sort((a,b)=>{
+            const va = getVal(a), vb = getVal(b);
+            if(typeof va === 'number' && typeof vb === 'number') return (dir==='asc'? va - vb : vb - va);
+            return (dir==='asc'? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va)));
+          });
+          // Re-add rows in new order
+          const frag = document.createDocumentFragment();
+          rows.forEach(r => frag.appendChild(r));
+          tbody.innerHTML='';
+          tbody.appendChild(frag);
+        }
+      }
+
+      // ========== Asesor de aperturas (beta) ==========
+      function normalizeSANLocal(s){
+        if(!s) return s;
+        let x = (''+s).trim();
+        if(x==='0-0') x='O-O'; if(x==='0-0-0') x='O-O-O';
+        x = x.replace(/[#!?+]+/g,'').replace(/\s*e\.p\./i,'');
+        x = x.replace(/=(Q|R|B|N)$/,'');
+        const m1 = x.match(/^([a-h])x([a-h][1-8])$/); if(m1) return m1[1]+'x'+m1[2];
+        if(/^[a-h][1-8]$/.test(x)) return x;
+        const m2 = x.match(/^([KQRBN])([a-h1-8]{0,2})(x?)([a-h][1-8])$/);
+        if(m2){ return m2[1] + (m2[3]==='x'?'x':'') + m2[4]; }
+        return x;
+      }
+
+      function selectOpeningForAdvisor(name, eco, color){
+        try{
+          const games = window.__DATASET__||[];
+          const filtered = games.filter(g => (g.opening===name || (!g.opening && g.eco===eco)) && g.meColor===color);
+          renderAdvisor(filtered, {name, eco, color});
+          // start explorer context too
+          startExplorerFor(name, eco, color);
+          // highlight selected row
+          const tbody = document.querySelector('#openingsTable tbody');
+          window.__SELECTED_OPENING__ = {name, eco, color};
+          if (tbody) {
+            tbody.querySelectorAll('tr').forEach(tr => tr.classList.remove('selected'));
+            const row = Array.from(tbody.querySelectorAll('tr')).find(tr => (
+              (tr.dataset.opening||'') === (name||'') && (tr.dataset.eco||'') === (eco||'') && (tr.dataset.color||'') === (color||'')
+            ));
+            if (row) row.classList.add('selected');
+          }
+        }catch(e){ console.warn('advisor error', e); }
+      }
+
+      function renderAdvisor(games, meta){
+        const sEl = document.getElementById('advisorSummary');
+        const gEl = document.getElementById('advisorGood');
+        const bEl = document.getElementById('advisorBad');
+        if(!sEl||!gEl||!bEl) return;
+        sEl.innerHTML = ''; gEl.innerHTML=''; bEl.innerHTML='';
+        const title = document.createElement('h3'); title.textContent = `${meta.name||'Apertura'} (${meta.eco||'—'}) • ${meta.color==='white'?'Blancas':'Negras'}`;
+        sEl.appendChild(title);
+
+        // Per-ply move stats for user's side
+        const byPly = new Map(); // ply -> { move: {c,w,d,l} }
+        let total=0,wins=0;
+        for(const g of games){
+          total++;
+          const result = normalizeResult(g.result, g.meColor);
+          if(result==='w') wins++;
+          const mv = (g.movesSAN||[]);
+          for(let i=0;i<mv.length;i++){
+            const ply = i+1; const side = (ply%2===1)? 'white':'black';
+            if((meta.color==='white' && side!=='white') || (meta.color==='black' && side!=='black')) continue;
+            const san = normalizeSANLocal(mv[i]);
+            if(!byPly.has(ply)) byPly.set(ply, {});
+            const slot = byPly.get(ply);
+            if(!slot[san]) slot[san] = {c:0,w:0,d:0,l:0};
+            slot[san].c++;
+            slot[san][result]++;
+          }
+        }
+        const overall = total? wins/total : 0;
+
+        // Build recommendations: for early plies, find moves with significant positive/negative diff
+        const recGood = [];
+        const recBad = [];
+        const maxPly = 10;
+        for(const [ply, slot] of byPly){
+          if(ply>maxPly) continue;
+          const entries = Object.entries(slot).map(([m,st])=>({m, c:st.c, w:st.w, d:st.d, l:st.l, wr: st.c? st.w/st.c : 0})).filter(x=>x.c>=5).sort((a,b)=> b.c-a.c);
+          if(entries.length<1) continue;
+          // compute weighted average for this ply
+          const sumC = entries.reduce((s,e)=>s+e.c,0); const avgWR = sumC? entries.reduce((s,e)=>s+e.w,0)/sumC : overall;
+          const best = entries.slice(0,2).filter(e=> e.wr > avgWR + 0.12); // +12pp
+          const worst = entries.slice(-2).filter(e=> e.wr < avgWR - 0.12);
+          best.forEach(e=> recGood.push({ply, move:e.m, wr: e.wr, c:e.c, delta: e.wr-avgWR}));
+          worst.forEach(e=> recBad.push({ply, move:e.m, wr: e.wr, c:e.c, delta: e.wr-avgWR}));
+        }
+        recGood.sort((a,b)=> b.delta - a.delta);
+        recBad.sort((a,b)=> a.delta - b.delta);
+
+        const mkList = (title, arr, kind) => {
+          const h = document.createElement('h3'); h.textContent = title;
+          const ul = document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px';
+          if(arr.length===0){
+            const li = document.createElement('li'); li.className='muted'; li.textContent = 'Sin patrón destacado.'; ul.appendChild(li);
+          }
+          arr.slice(0,5).forEach(e=>{
+            const li = document.createElement('li');
+            const pct = Math.round(e.wr*100);
+            const sign = e.delta>0? '+':'-';
+            const diff = Math.round(Math.abs(e.delta)*100);
+            li.textContent = `${kind==='good'?'Favor':'Penaliza'}: ${e.move} en jugada ${Math.ceil(e.ply/2)} (${pct}% • ${sign}${diff}pp, ${e.c} partidas)`;
+            ul.appendChild(li);
+          });
+          return [h,ul];
+        };
+        const [hg,ulg] = mkList('Recomendadas según tu historial', recGood, 'good');
+        const [hb,ulb] = mkList('Evitar según tu historial', recBad, 'bad');
+        gEl.appendChild(hg); gEl.appendChild(ulg);
+        bEl.appendChild(hb); bEl.appendChild(ulb);
+      }
+
+      // Heurística: clasificar una apertura en macro categorías
+      function classifyOpening(opening, eco, moves){
+        const name = (opening||'').toLowerCase();
+        const m0 = (moves&&moves[0]||'').toLowerCase();
+        const m1 = (moves&&moves[1]||'').toLowerCase();
+        const cats = new Set();
+        const add = (c)=> cats.add(c);
+        // Por nombre
+        if(name.includes('sicilian')) add('Siciliana');
+        if(name.includes('french')) add('Francesa');
+        if(name.includes('caro-kann')) add('Caro-Kann');
+        if(name.includes('scandinav')) add('Escandinava');
+        if(name.includes('pirc')||name.includes('modern')) add('Pirc/Moderna');
+        if(name.includes("king's indian")||name.includes('kings indian')||name.includes('india de rey')) add('India de Rey');
+        if(name.includes("queen's gambit")||name.includes('gambit')||name.includes('gambito')) add('Gambitos');
+        if(name.includes('benoni')) add('Benoni');
+        if(name.includes('grunfeld')||name.includes('grünfeld')) add('Grünfeld');
+        if(name.includes('nimzo')||name.includes('bogo')) add('Nimzo/Bogo');
+        if(name.includes('slav')) add('Eslava');
+        if(name.includes('english')) add('Inglesa');
+        if(name.includes('reti')||name.includes('réti')) add('Reti');
+        if(name.includes('italian')) add('Italiana');
+        if(name.includes('spanish')||name.includes('ruy lopez')||name.includes('española')) add('Española');
+        if(name.includes('scotch')) add('Escocesa');
+        if(name.includes('vienna')) add('Viena');
+        if(name.includes('philidor')) add('Philidor');
+        if(name.includes('petrov')||name.includes('russian')) add('Petrov');
+        if(name.includes('alekhine')) add('Alekhine');
+        if(name.includes('dutch')||name.includes('holand')) add('Holandesa');
+        if(name.includes('catalan')) add('Catalana');
+        if(name.includes('london')) add('Londres');
+        if(name.includes('stonewall')) add('Stonewall');
+        // Macro por primeras jugadas
+        if(m0.startsWith('e4') && m1.startsWith('e5')) add('Juego abierto (e4 e5)');
+        else if(m0.startsWith('e4')) add('Semiabierto (e4 …)');
+        if(m0.startsWith('d4') && (m1.startsWith('d5'))) add('Cerrado (d4 d5)');
+        if(m0.startsWith('d4') && (m1.startsWith('Nf6')||m1.startsWith('nf6'))) add('Indias (d4 Cf6)');
+        if(m0.startsWith('c4') || m0.startsWith('Nf3')||m0.startsWith('nf3')) add('Flanco (c4/Nf3)');
+        if(name.includes('gambit')||name.includes('gambito')) add('Gambitos');
+        // ECO fallback
+        const L = (eco||'').toString().charAt(0);
+        if(L==='B' && !cats.size) add('Sicilianas/ECO B');
+        if(L==='C' && !cats.size) add('Abiertas/ECO C');
+        if(L==='D' && !cats.size) add('Cerradas/ECO D');
+        if(L==='E' && !cats.size) add('Indias/ECO E');
+        if(L==='A' && !cats.size) add('Flanco/ECO A');
+        return Array.from(cats);
+      }
+
+      function buildOpeningInsights(games){
+        const stats = new Map(); // key -> {games,w,d,l}
+        let wAll=0,tAll=0;
+        for(const g of games){
+          const ks = classifyOpening(g.opening, g.eco, g.movesSAN);
+          const r = normalizeResult(g.result, g.meColor);
+          tAll++;
+          if(r==='w') wAll++;
+          ks.forEach(k => {
+            if(!stats.has(k)) stats.set(k, {games:0,w:0,d:0,l:0});
+            const s = stats.get(k); s.games++; s[r]++;
+          });
+        }
+        const overall = tAll? (wAll/tAll):0;
+        const arr = Array.from(stats.entries()).map(([key,s])=> ({key, games:s.games, w:s.w, d:s.d, l:s.l, winrate: s.games? s.w/s.games:0, diff: (s.games? s.w/s.games:0) - overall}));
+        const min = Math.max(8, Math.floor(tAll*0.01));
+        const filtered = arr.filter(x=>x.games>=min).sort((a,b)=> b.diff - a.diff);
+        const best = filtered.slice(0,3);
+        const worst = filtered.slice(-3).reverse();
+        const topNames = best.map(b=>b.key.split(' ')[0]).join(', ');
+        const lowNames = worst.map(b=>b.key.split(' ')[0]).join(', ');
+        const summary = (best.length && worst.length)
+          ? `Tu estilo rinde mejor en ${topNames} y sufre más en ${lowNames}.`
+          : '';
+        return { overallWinrate: overall, best, worst, summary };
+      }
+
+      // ========= Explicaciones LLM por variable =========
+      function stableHash(str){
+        try{
+          let h=5381; for(let i=0;i<str.length;i++){ h=((h<<5)+h) ^ str.charCodeAt(i); h|=0; }
+          return String(h>>>0);
+        }catch{ return String(Math.random()).slice(2); }
+      }
+
+      async function renderExplanations(agg){
+        try{
+          const apiBaseEl = document.getElementById('dsApiBase');
+          const apiKeyEl = document.getElementById('dsApiKey');
+          const modelEl = document.getElementById('dsModel');
+          const use = (localStorage.getItem('ds_use')||'false')==='true';
+          const base = apiBaseEl?.value?.trim() || '/api/deepseek';
+          const key = apiKeyEl?.value?.trim() || '';
+          const model = modelEl?.value || 'deepseek-chat';
+
+          const hourWr = Array.from({length:24},(_,h)=>{ let w=0,t=0; for(let d=0; d<7; d++){ const c=agg.heat[d][h]; const tot=c.w+c.d+c.l; w+=c.w; t+=tot; } return t? Math.round((w/t)*100):0; });
+          explainOne('hour', {hourWr}, document.getElementById('explain-hour'), use, {base,key,model});
+
+          const sessionWr = agg.bySessionIdx.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
+          explainOne('session', {sessionWr}, document.getElementById('explain-session'), use, {base,key,model});
+
+          const wrDiff = agg.byEloDiff.data.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
+          explainOne('elodiff', {bins: agg.byEloDiff.bins, wrDiff}, document.getElementById('explain-elodiff'), use, {base,key,model});
+
+          const wrDur = agg.byDuration.data.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
+          explainOne('duration', {edges: agg.byDuration.edges, wrDur}, document.getElementById('explain-duration'), use, {base,key,model});
+        }catch(e){ console.warn('explanations error', e); }
+      }
+
+      async function explainOne(name, payload, targetEl, useLLM, {base,key,model}){
+        if(!targetEl) return;
+        const local = localExplain(name, payload);
+        targetEl.textContent = local;
+        if(!useLLM) return;
+        try{
+          const sys = 'Eres un analista de rendimiento de ajedrez. Resume en español en 2-4 frases qué sugiere cada variable sobre el rendimiento del jugador. Sé conciso y claro.';
+          const usr = `Variable: ${name}. Datos agregados: ${JSON.stringify(payload)}`;
+          const url = (base||'/api/deepseek').replace(/\/$/,'') + '/chat/completions';
+          const body = { model: model||'deepseek-chat', messages: [ {role:'system', content: sys}, {role:'user', content: usr} ], temperature: 0.2 };
+          const digest = stableHash(JSON.stringify({name,payload}));
+          const ck = 'explain:'+ (model||'deepseek-chat') + ':' + digest;
+          const cached = llmCacheGet(ck); if(cached && cached.d){ targetEl.textContent = cached.d; return; }
+          const headers = url.startsWith('/api/')? {'Content-Type':'application/json'} : {'Content-Type':'application/json','Authorization':'Bearer '+(key||'')};
+          const res = await fetch(url, {method:'POST', headers, body: JSON.stringify(body)});
+          if(!res.ok) return;
+          const data = await res.json();
+          const text = data?.choices?.[0]?.message?.content || '';
+          if(text){ targetEl.textContent = text; llmCacheSet(ck, text); }
+        }catch(e){ console.warn('llm explain failed', e); }
+      }
+
+      function localExplain(name, payload){
+        try{
+          if(name==='hour'){
+            const arr = payload.hourWr||[]; const best = idxMax(arr), worst = idxMin(arr);
+            return `Mejor franja horaria: ${best}:00 (${arr[best]}% vict.). Más floja: ${worst}:00 (${arr[worst]}%).`;
+          }
+          if(name==='session'){
+            const arr = payload.sessionWr||[]; const best = idxMax(arr), worst = idxMin(arr);
+            const lab = (i)=> i<11? (i+1) : '12+';
+            return `En sesiones, mejor rendimiento en la partida ${lab(best)} (${arr[best]}%) y peor en ${lab(worst)} (${arr[worst]}%).`;
+          }
+          if(name==='elodiff'){
+            const wr = payload.wrDiff||[]; const b = payload.bins||[]; const best = idxMax(wr), worst = idxMin(wr);
+            const fmt = (i)=> i===0? '<= -400' : (i===wr.length-1? '>= 400' : `${b[i]}..${b[i+1]-1}`);
+            return `La diferencia de ELO impacta: mejor con ${fmt(best)} (${wr[best]}%), peor con ${fmt(worst)} (${wr[worst]}%).`;
+          }
+          if(name==='duration'){
+            const wr = payload.wrDur||[]; const e = payload.edges||[]; const best = idxMax(wr), worst = idxMin(wr);
+            const fmt = (i)=> i===wr.length-1? `${e[i]}+m` : `${e[i]}-${e[i+1]}m`;
+            return `Por duración, mejor en ${fmt(best)} (${wr[best]}%) y peor en ${fmt(worst)} (${wr[worst]}%).`;
+          }
+        }catch{}
+        return '';
+      }
+      const idxMax = (a)=> a.reduce((bi,v,i,arr)=> v>(arr[bi]??-1)? i:bi, 0);
+      const idxMin = (a)=> a.reduce((bi,v,i,arr)=> v<(arr[bi]??1e9)? i:bi, 0);
+    </script>
+    <style>
+      .opening-preview{
+        position: fixed; z-index: 50; pointer-events: none;
+        background:
+          radial-gradient(120% 100% at 0% 0%, rgba(255,255,255,0.06), rgba(255,255,255,0) 60%),
+          linear-gradient(180deg, var(--panel), var(--panel-2));
+        border:1px solid #262a45; border-radius:14px; padding:12px; width:240px;
+        box-shadow: 0 18px 48px rgba(0,0,0,0.45);
+        backdrop-filter: blur(6px);
+        opacity: 0; transform: translateY(6px) scale(0.98);
+        transition: opacity 160ms ease, transform 180ms cubic-bezier(.2,.8,.2,1);
+      }
+      .opening-preview.show{ opacity: 1; transform: translateY(0) scale(1); }
+      .opening-preview.hide{ opacity: 0; transform: translateY(6px) scale(0.98); }
+      .opening-preview .title{ font-size: 13px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      #openingsTable td.opening-cell{ cursor: help; }
+      #openingsTable th{ cursor: pointer; user-select: none; }
+      #openingsTable th.sort-asc::after{ content: ' \25B2'; color: var(--muted); }
+      #openingsTable th.sort-desc::after{ content: ' \25BC'; color: var(--muted); }
+      a.op-link{ color: var(--accent); text-decoration: none; }
+      a.op-link:hover{ text-decoration: underline; }
+      #openingsTable tbody tr{ cursor: pointer; }
+      #openingsTable tbody tr.selected{ outline: 2px solid #3aa1ff; outline-offset: -2px; background: linear-gradient(180deg, rgba(58,161,255,.12), rgba(58,161,255,.06)); }
+
+      /* Chat UI */
+      .chat{ max-height: 260px; overflow:auto; padding: 8px; border:1px solid #262a45; border-radius:12px; background:linear-gradient(180deg, rgba(26,32,66,.35), rgba(21,26,54,.35)); }
+      .msg{ display:flex; margin:8px 0; }
+      .msg .bubble{ max-width: 80%; padding:10px 12px; border-radius:14px; line-height:1.35; box-shadow: 0 8px 20px rgba(0,0,0,.25); }
+      .msg.user{ justify-content: flex-end; }
+      .msg.user .bubble{ background: linear-gradient(180deg,#2b6de1,#204ea8); border:1px solid rgba(255,255,255,.08); color:#fff; border-bottom-right-radius:6px; }
+      .msg.bot{ justify-content: flex-start; }
+      .msg.bot .bubble{ background: linear-gradient(180deg, var(--panel), var(--panel-2)); border:1px solid #2a315b; color: var(--text); border-bottom-left-radius:6px; }
+      .msg.entering{ opacity:0; transform: translateY(6px) scale(.98); transition: opacity .18s ease, transform .2s cubic-bezier(.2,.8,.2,1); }
+      .msg.entering .bubble{ filter: saturate(.9); }
+      .msg:not(.entering){ opacity:1; transform:none; }
+      .msg.typing .bubble{ display:inline-flex; gap:6px; align-items:center; }
+      .msg.typing .dot{ width:6px; height:6px; border-radius:50%; background:#9fb7ff; opacity:.7; animation: blink 1s infinite; }
+      .msg.typing .dot:nth-child(2){ animation-delay:.15s }
+      .msg.typing .dot:nth-child(3){ animation-delay:.3s }
+      @keyframes blink{ 0%,80%,100%{ opacity:.2 } 40%{ opacity:1 } }
+    </style>
+  </body>
+</html>

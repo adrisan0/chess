@@ -2447,7 +2447,6 @@
         dsCursor.remove();
         dsCursor = null;
       }
-
       function showDsPopup(text, pos){
         hideDsPopup();
         dsPopup = document.createElement('div');
@@ -2464,7 +2463,6 @@
         dsPopup.remove();
         dsPopup = null;
       }
-
       document.addEventListener('mousemove', trackMouse);
       document.addEventListener('keydown', e => {
         if (e.key === 'd' || e.key === 'D') {
@@ -2524,7 +2522,6 @@
       #openingsTable tbody tr.selected{ outline: 2px solid #3aa1ff; outline-offset: -2px; background: linear-gradient(180deg, rgba(58,161,255,.12), rgba(58,161,255,.06)); }
 
       .ds-highlight{ box-shadow: 0 0 0 2px #3aa1ff; border-color: #3aa1ff !important; }
-
       #deepseek-cursor{
         position: fixed;
         width: 24px;

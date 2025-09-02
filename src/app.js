@@ -954,6 +954,7 @@ if (btnCloseOver) btnCloseOver.addEventListener('click', ()=>{ if (gameOverEl) g
 // Learning UI: username + load stats + toggle
 const ccInput = document.getElementById('ccUsername');
 const loadStatsBtn = document.getElementById('loadStatsBtn');
+const forceStatsBtn = document.getElementById('forceStatsBtn');
 const showPenaltyChk = document.getElementById('showPenalty');
 
 if (ccInput) {
@@ -982,39 +983,43 @@ if (showPenaltyChk) {
         if (selected) highlightMoves(selected.row, selected.col);
     });
 }
-if (loadStatsBtn) {
-    loadStatsBtn.addEventListener('click', async () => {
-        const u = (ccInput?.value||'').trim();
-        if (!u) { alert('Introduce tu usuario de Chess.com'); return; }
-        localStorage.setItem('cc_username', u);
-        const infoEl = document.getElementById('penaltyInfo');
-        const modelEl = document.getElementById('modelStatus');
-        if (infoEl) infoEl.textContent = 'Cargando historial…';
-        try {
-            userMoveStats = await window.ChessCom.loadUserMoveStats(u, { months: 'all' });
-            if (infoEl) infoEl.textContent = `Historial cargado (${userMoveStats.months} meses). Resalta casillas para ver %.`;
-            if (modelEl) {
-                const bm = userMoveStats.benchmark || {};
-                if (bm.samples) {
-                    const q = bm.quality || 'unknown';
-                    const ctx = Math.round((bm.ctxCoverage||0)*100);
-                    const ply = Math.round((bm.plyCoverage||0)*100);
-                    modelEl.textContent = `Modelo: ${q} • muestras ${bm.samples} • contexto ${ctx}% • ply ${ply}%`;
-                } else {
-                    modelEl.textContent = 'Modelo: sin benchmark disponible.';
-                }
+/**
+ * Retrieve move statistics for the given Chess.com user.
+ * When `force` is true, cached data is ignored and reloaded.
+ */
+async function handleLoadStats(force=false) {
+    const u = (ccInput?.value||'').trim();
+    if (!u) { alert('Introduce tu usuario de Chess.com'); return; }
+    localStorage.setItem('cc_username', u);
+    const infoEl = document.getElementById('penaltyInfo');
+    const modelEl = document.getElementById('modelStatus');
+    if (infoEl) infoEl.textContent = 'Cargando historial…';
+    try {
+        userMoveStats = await window.ChessCom.loadUserMoveStats(u, { months: 'all', force });
+        if (infoEl) infoEl.textContent = `Historial cargado (${userMoveStats.months} meses). Resalta casillas para ver %.`;
+        if (modelEl) {
+            const bm = userMoveStats.benchmark || {};
+            if (bm.samples) {
+                const q = bm.quality || 'unknown';
+                const ctx = Math.round((bm.ctxCoverage||0)*100);
+                const ply = Math.round((bm.plyCoverage||0)*100);
+                modelEl.textContent = `Modelo: ${q} • muestras ${bm.samples} • contexto ${ctx}% • ply ${ply}%`;
+            } else {
+                modelEl.textContent = 'Modelo: sin benchmark disponible.';
             }
-            renderBoard();
-            if (selected) highlightMoves(selected.row, selected.col);
-        } catch (e) {
-            console.error(e);
-            if (infoEl) infoEl.textContent = 'No se pudo cargar el historial.';
-            const modelEl2 = document.getElementById('modelStatus');
-            if (modelEl2) modelEl2.textContent = '';
-            alert('No se pudo cargar el historial de Chess.com. Verifica el usuario.');
         }
-    });
+        renderBoard();
+        if (selected) highlightMoves(selected.row, selected.col);
+    } catch (e) {
+        console.error(e);
+        if (infoEl) infoEl.textContent = 'No se pudo cargar el historial.';
+        const modelEl2 = document.getElementById('modelStatus');
+        if (modelEl2) modelEl2.textContent = '';
+        alert('No se pudo cargar el historial de Chess.com. Verifica el usuario.');
+    }
 }
+if (loadStatsBtn) loadStatsBtn.addEventListener('click', () => handleLoadStats(false));
+if (forceStatsBtn) forceStatsBtn.addEventListener('click', () => handleLoadStats(true));
 
 initBoard();
 createBoard();

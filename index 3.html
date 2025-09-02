@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ajedrez Didáctico</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="src/styles.css">
+</head>
+<body>
+    <header class="topbar">
+        <div class="brand">♟ Ajedrez Didáctico</div>
+        <nav class="mainnav">
+            <a href="#" class="navlink active" id="navPlay">Juego</a>
+            <a href="data-viz.html" class="navlink" target="_blank">Analizador</a>
+            <button id="settingsToggle" class="btn">Ajustes</button>
+        </nav>
+    </header>
+
+    <div class="app-shell">
+        <main class="main-area">
+            <div id="board" class="board"></div>
+            <div class="hint">
+                <span>Consejo: usa 1‑4 para alternar vistas</span>
+                <div id="activeViews" class="views"></div>
+            </div>
+            <div id="gameOver" class="gameover hidden">
+                <div class="modal">
+                    <h2 id="gameOverTitle">Partida terminada</h2>
+                    <div id="gameOverDesc" class="muted" style="margin:6px 0 12px"></div>
+                    <div class="row" style="gap:8px; justify-content:center">
+                        <button id="btnNewGame" class="btn primary">Nueva partida</button>
+                        <button id="btnCloseOver" class="btn ghost">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+        <aside class="side-panel">
+            <section class="card" id="opponent">
+                <h2>Oponente</h2>
+                <label style="display:block; margin:6px 0">
+                    <input type="checkbox" id="useEngineSide"> Usar Stockfish
+                </label>
+                <label style="display:block; margin:6px 0">
+                    ELO del motor
+                    <input type="range" id="engineElo" min="800" max="2800" step="50" value="1600" style="width:100%">
+                </label>
+                <div class="small muted">Baja el ELO para un rival más humano. Por defecto está activado.</div>
+                <hr style="border-color: rgba(255,255,255,0.08)">
+                <label style="display:block; margin:6px 0">
+                    <input type="checkbox" id="useLLMCoachSide"> Coach LLM (comentarios en tiempo real)
+                </label>
+                <label style="display:block; margin:6px 0">
+                    <input type="checkbox" id="useLLMPickSide"> LLM elige jugadas (rápido)
+                </label>
+            </section>
+            <section class="card" id="hud">
+                <div id="timer" class="timer">
+                    <div class="timer-row"><span>Blancas</span><span id="timeWhite">00:00</span></div>
+                    <div class="timer-row"><span>Negras</span><span id="timeBlack">00:00</span></div>
+                </div>
+                <div id="captured" class="captured">
+                    <div>Capturas blancas</div>
+                    <div id="capturedWhite"></div>
+                    <div style="margin-top:8px">Capturas negras</div>
+                    <div id="capturedBlack"></div>
+                </div>
+            </section>
+            <section class="card moves">
+                <h2>Movimientos</h2>
+                <ol id="moveList"></ol>
+                <button id="exportPGN" class="btn">Exportar PGN</button>
+            </section>
+            <section class="card" id="coach">
+                <h2>Coach</h2>
+                <div id="coachFeed" class="coach-feed"></div>
+            </section>
+            <section class="card">
+                <h2>Aprender</h2>
+                <div class="learn">
+                    <label>Usuario Chess.com
+                        <input id="ccUsername" type="text" placeholder="tu_usuario" style="width:160px">
+                    </label>
+                    <button id="loadStatsBtn" class="btn">Cargar historial</button>
+                    <button id="forceStatsBtn" class="btn ghost">Forzar descarga</button>
+                    <label style="display:block; margin-top:8px">
+                        <input type="checkbox" id="showPenalty" checked>
+                        Mostrar % penalización en jugadas
+                    </label>
+                    <a href="data-viz.html" target="_blank" class="btn ghost" style="margin-top:8px">Abrir analizador</a>
+                    <div id="penaltyInfo" class="muted" style="margin-top:6px;"></div>
+                    <div id="modelStatus" class="muted" style="margin-top:6px;"></div>
+                </div>
+            </section>
+        </aside>
+    </div>
+
+    <!-- Modal de ajustes -->
+    <div id="settingsMenu" class="settings hidden" aria-modal="true" role="dialog">
+      <div class="card settings-dialog" style="max-width:520px; width:90%">
+        <div class="settings-header">
+            <h3>Ajustes</h3>
+            <button id="settingsClose" class="btn icon" aria-label="Cerrar ajustes">✕</button>
+        </div>
+        <label>Tamaño de pieza
+            <input type="range" id="pieceSize" min="24" max="72" value="48">
+        </label>
+        <label>Brillo neón
+            <input type="range" id="neonBrightness" min="30" max="70" value="55">
+        </label>
+        <label>Tema
+            <select id="themeSelect">
+                <option value="neon" selected>Neón oscuro</option>
+                <option value="classic">Clásico</option>
+                <option value="contrast">Alto contraste</option>
+            </select>
+        </label>
+        <details>
+            <summary>Motor (IA)</summary>
+            <label>
+                <input type="checkbox" id="useEngine">
+                Usar Stockfish (si está disponible)
+            </label>
+            <label style="display:block; margin-top:6px">
+                <input type="checkbox" id="usePersona">
+                IA "Como yo" (requiere historial Chess.com cargado)
+            </label>
+            <label style="display:block; margin-top:6px">
+                <input type="checkbox" id="useLLMCoach">
+                Coach LLM (DeepSeek): comentarios y estilo
+            </label>
+            <div class="small muted" style="margin-top:4px">
+                Base API: <code>/api/deepseek</code> • Modelo: <code>deepseek-chat</code>
+            </div>
+            <label style="display:block; margin-top:6px">Profundidad
+                <input type="number" id="engineDepth" min="4" max="20" value="10" style="width:64px">
+            </label>
+            <div style="color:#a8b3c7; font-size:0.9em; margin-top:6px">
+                Para activarlo, coloca un archivo compatible con navegador en <code>src/stockfish.js</code>
+                o incluye un script que exponga <code>STOCKFISH()</code>. Si no se encuentra, se usará un movimiento aleatorio.
+            </div>
+        </details>
+        <details id="lightingSettings">
+            <summary>Iluminación</summary>
+            <label>Intensidad del resplandor
+                <input type="range" id="glowIntensity" min="5" max="30" value="15">
+            </label>
+            <label>Saturación del neón
+                <input type="range" id="neonSaturation" min="50" max="100" value="100">
+            </label>
+        </details>
+      </div>
+    </div>
+
+    <!-- Pantalla de inicio -->
+    <div id="startOverlay" class="start-overlay">
+        <div class="start-modal">
+            <h2>Elige tu bando</h2>
+            <div class="start-actions">
+                <button id="btnPlayWhite" class="btn primary">Blancas</button>
+                <button id="btnPlayBlack" class="btn">Negras</button>
+            </div>
+        </div>
+    </div>
+    <script src="src/fire.js"></script>
+    <script src="src/chesscom.js"></script>
+    <script src="src/effects.js"></script>
+    <script src="src/logger.js"></script>
+    <!-- Si añades un build que exponga STOCKFISH() en el hilo principal,
+         puedes incluirlo aquí opcionalmente: <script src="src/stockfish.js"></script> -->
+    <script src="src/app.js"></script>
+</body>
+</html>
