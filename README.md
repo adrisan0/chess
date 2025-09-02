@@ -64,6 +64,10 @@ usa el botón **Forzar descarga** para omitir la caché y traer la versión más
 
 Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones. Esta métrica se almacena en el campo `precision` de cada partida y puede emplearse en futuras visualizaciones o análisis.
 
+## Análisis de precisión
+
+Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones. Esta métrica se almacena en el campo `precision` de cada partida y puede emplearse en futuras visualizaciones o análisis. Las evaluaciones se guardan en caché, evitando que Stockfish vuelva a analizar partidas ya procesadas salvo que se encuentren datos nuevos.
+
 ## Pruebas
 
 Se incluye un pequeño conjunto de pruebas para comprobar la lógica básica de puntuación del bot.

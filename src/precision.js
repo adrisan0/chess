@@ -171,7 +171,25 @@
     return null;
   }
 
+  function hashStr(str){
+    let h = 0;
+    for(let i=0;i<str.length;i++){
+      h = (h<<5) - h + str.charCodeAt(i);
+      h |= 0;
+    }
+    return h.toString(16);
+  }
+
   async function analyzeGamePrecision(pgn, {depth=12, engineFactory}={}){
+    const key = 'gp_acl_' + hashStr(pgn||'');
+    try{
+      if(typeof localStorage !== 'undefined'){
+        const cached = localStorage.getItem(key);
+        if(cached != null){
+          return { averageCentipawnLoss: JSON.parse(cached) };
+        }
+      }
+    }catch{}
     const movesSan = extractMovesSAN(pgn).map(normalizeSAN);
     const movesUci = sanToUciSequence(movesSan);
     const factory = engineFactory || tryCreateEngine;
@@ -188,7 +206,13 @@
       lossSum += loss; count++;
     }
     if(engine.terminate) try{engine.terminate();}catch{}
-    return { averageCentipawnLoss: count? lossSum/count : null };
+    const avg = count? lossSum/count : null;
+    try{
+      if(typeof localStorage !== 'undefined'){
+        localStorage.setItem(key, JSON.stringify(avg));
+      }
+    }catch{}
+    return { averageCentipawnLoss: avg };
   }
 
   const api = { analyzeGamePrecision, sanToUciSequence };

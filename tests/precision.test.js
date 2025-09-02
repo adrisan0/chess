@@ -30,4 +30,18 @@ function stubEngine(cps){
   assert(Math.abs(res.averageCentipawnLoss - 25) < 1e-9);
 })();
 
+(async function testCaching(){
+  const pgn = '[Event "?"]\n\n1. e4 e5 2. Nf3 Nc6';
+  let calls = 0;
+  const engineFactory = () => { calls++; return stubEngine([0]); };
+  global.localStorage = {
+    store:{},
+    getItem(k){ return this.store[k] || null; },
+    setItem(k,v){ this.store[k]=v; }
+  };
+  await analyzeGamePrecision(pgn, {depth:1, engineFactory});
+  await analyzeGamePrecision(pgn, {depth:1, engineFactory});
+  assert.strictEqual(calls, 1);
+})();
+
 console.log('All precision tests passed.');
