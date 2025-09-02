@@ -1077,7 +1077,11 @@ let engineElo = 1600; // default strength target
 let usePersona = false;
 let useLLMCoach = false;
 let useLLMPick = false;
+// Determine API base; fall back to local proxy when loaded via file:// to avoid cross-origin errors
 let dsApiBase = '/api/deepseek';
+if (typeof location !== 'undefined' && location.protocol === 'file:') {
+    dsApiBase = 'http://localhost:8787/api/deepseek';
+}
 let dsModel = 'deepseek-chat';
 
 const useEngineChk = document.getElementById('useEngine');
