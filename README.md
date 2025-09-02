@@ -53,6 +53,13 @@ Un botón permite exportar la partida en formato PGN para analizarla con otros p
 
 El archivo `data-viz.html` ofrece estadísticas detalladas de tus partidas. Incluye gráficas de rachas ganadoras y perdedoras, análisis según descanso entre partidas y un listado de aperturas que puede filtrarse por color. Las gráficas de winrate muestran una línea con la media global de victorias para comparar cada categoría con tu rendimiento general. Pulsa la tecla `d` y aparecerá un círculo alrededor del cursor; al hacer clic en cualquier elemento informativo, DeepSeek describirá esa sección y te dará un consejo para mejorar en ajedrez.
 
+## Integración con Chess.com
+
+En la sección **Aprender** puedes cargar tu historial de partidas desde Chess.com.
+Los datos recuperados se guardan en el navegador durante 5 horas para evitar
+excesos de peticiones. Si necesitas información actualizada antes de ese plazo,
+usa el botón **Forzar descarga** para omitir la caché y traer la versión más reciente.
+
 ## Pruebas
 
 Se incluye un pequeño conjunto de pruebas para comprobar la lógica básica de puntuación del bot.
