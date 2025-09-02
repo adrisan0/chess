@@ -754,6 +754,10 @@
         bullet:'#ff9f9f', blitz:'#3aa1ff', rapid:'#8be7a4', daily:'#ffce8b'
       };
 
+      /**
+       * Render charts and KPIs based on aggregated data.
+       * Adds a global winrate baseline to winrate charts.
+       */
       function renderAll(agg){
         window.__AGG__ = agg;
         // KPIs
@@ -763,6 +767,7 @@
         $('#kpi-max-elo').textContent = agg.kpis.maxElo? fmt.format(agg.kpis.maxElo):'—';
         $('#kpi-opp-avg').textContent = agg.kpis.oppAvg? fmt.format(agg.kpis.oppAvg):'—';
         $('#kpi-avg-moves').textContent = agg.kpis.avgMoves? fmt.format(agg.kpis.avgMoves):'—';
+        const globalWrPct = Math.round((agg.kpis.winrate||0)*100);
 
         // ELO chart: eje X y color
         const xMode = $('#xAxisMode').value; // 'games' | 'time' | 'moves' | 'duration'
@@ -900,8 +905,13 @@
         });
         charts.heatmap = new Chart($('#heatmap'),{
           type:'bar',
-          data:{ labels: labelsH, datasets:[{ label:'% Victorias', data: winPctByHour, backgroundColor:'#8be7a4' }]},
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{title:{display:true, text:'%'} , min:0, max:100}}, plugins:{legend:{display:false}}}
+          data:{
+            labels: labelsH,
+            datasets:[
+              { label:'% Victorias', data: winPctByHour, backgroundColor:'#8be7a4' },
+              { label:'Media global', data:Array(labelsH.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0 }
+            ]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{title:{display:true, text:'%'}, min:0, max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.heatmap.canvas.parentNode.style.height='300px';
 
@@ -912,8 +922,13 @@
         });
         charts.wrBySessionIdx = new Chart($('#wrBySessionIdx'),{
           type:'bar',
-          data:{ labels: labelsIdx, datasets:[{label:'% Victorias', data: wrIdx, backgroundColor:'#3aa1ff'}] },
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+          data:{
+            labels: labelsIdx,
+            datasets:[
+              {label:'% Victorias', data: wrIdx, backgroundColor:'#3aa1ff'},
+              {label:'Media global', data:Array(labelsIdx.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0}
+            ] },
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.wrBySessionIdx.canvas.parentNode.style.height='280px';
 
@@ -923,8 +938,14 @@
         if(labelsDiff.length){ labelsDiff[0] = '<= -400'; labelsDiff[labelsDiff.length-1] = '>= 400'; }
         const wrDiff = agg.byEloDiff.data.map(x=>{ const t=x.w+x.d+x.l; return t? Math.round((x.w/t)*100):0; });
         charts.wrByEloDiff = new Chart($('#wrByEloDiff'),{
-          type:'bar', data:{ labels:labelsDiff, datasets:[{label:'% Victorias', data:wrDiff, backgroundColor:'#8be7a4'}] },
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+          type:'bar',
+          data:{
+            labels:labelsDiff,
+            datasets:[
+              {label:'% Victorias', data:wrDiff, backgroundColor:'#8be7a4'},
+              {label:'Media global', data:Array(labelsDiff.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0}
+            ] },
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.wrByEloDiff.canvas.parentNode.style.height='280px';
 
@@ -933,8 +954,14 @@
         const labelsDur = Array.from({length:e.length-1},(_,i)=> i===e.length-2? `${e[i]}+m` : `${e[i]}-${e[i+1]}m`);
         const wrDur = agg.byDuration.data.map(x=>{ const t=x.w+x.d+x.l; return t? Math.round((x.w/t)*100):0; });
         charts.wrByDuration = new Chart($('#wrByDuration'),{
-          type:'bar', data:{ labels: labelsDur, datasets:[{label:'% Victorias', data: wrDur, backgroundColor:'#ffce8b'}]},
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+          type:'bar',
+          data:{
+            labels: labelsDur,
+            datasets:[
+              {label:'% Victorias', data: wrDur, backgroundColor:'#ffce8b'},
+              {label:'Media global', data:Array(labelsDur.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0}
+            ]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.wrByDuration.canvas.parentNode.style.height='280px';
 
@@ -942,15 +969,27 @@
         const labelsWS = Array.from({length:7},(_,i)=> (i<6? String(i+1):'7+'));
         const wrWS = agg.byWinStreak.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
         charts.wrByWinStreak = new Chart($('#wrByWinStreak'),{
-          type:'bar', data:{ labels: labelsWS, datasets:[{label:'% Victorias', data: wrWS, backgroundColor:'#8be7a4'}]},
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+          type:'bar',
+          data:{
+            labels: labelsWS,
+            datasets:[
+              {label:'% Victorias', data: wrWS, backgroundColor:'#8be7a4'},
+              {label:'Media global', data:Array(labelsWS.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0}
+            ]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.wrByWinStreak.canvas.parentNode.style.height='280px';
 
         const wrLS = agg.byLoseStreak.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
         charts.wrByLoseStreak = new Chart($('#wrByLoseStreak'),{
-          type:'bar', data:{ labels: labelsWS, datasets:[{label:'% Victorias', data: wrLS, backgroundColor:'#ff9f9f'}]},
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+          type:'bar',
+          data:{
+            labels: labelsWS,
+            datasets:[
+              {label:'% Victorias', data: wrLS, backgroundColor:'#ff9f9f'},
+              {label:'Media global', data:Array(labelsWS.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0}
+            ]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.wrByLoseStreak.canvas.parentNode.style.height='280px';
 
@@ -958,8 +997,14 @@
         const labelsGap = Array.from({length:g.length-1},(_,i)=> i===g.length-2? `${g[i]}+m` : `${g[i]}-${g[i+1]}m`);
         const wrGap = agg.byGap.data.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
         charts.wrByGap = new Chart($('#wrByGap'),{
-          type:'bar', data:{ labels: labelsGap, datasets:[{label:'% Victorias', data: wrGap, backgroundColor:'#3aa1ff'}]},
-          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+          type:'bar',
+          data:{
+            labels: labelsGap,
+            datasets:[
+              {label:'% Victorias', data: wrGap, backgroundColor:'#3aa1ff'},
+              {label:'Media global', data:Array(labelsGap.length).fill(globalWrPct), type:'line', borderColor:'#ff3a3a', borderWidth:2, pointRadius:0}
+            ]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{position:'bottom'}}}
         });
         charts.wrByGap.canvas.parentNode.style.height='280px';
 
@@ -1420,6 +1465,36 @@
         }
         if(send) send.addEventListener('click', ask);
         if(input) input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
+
+        /**
+         * Request a DeepSeek comment about a given section element.
+         * @param {HTMLElement} el Target element to describe.
+         */
+        window.commentSection = async function(el){
+          if(!el) return;
+          const txt = (el.innerText||'').trim().replace(/\s+/g,' ').slice(0,400);
+          if(!txt) return;
+          const typing = showTyping();
+          try{
+            let ans;
+            const prompt = `Describe briefly this section: "${txt}". Provide a chess improvement tip related to these data.`;
+            if(useEl?.checked){
+              ans = await askDeepseekLLM(prompt, ctx, {
+                base:(apiBaseEl?.value||'').trim(),
+                key:(apiKeyEl?.value||'').trim(),
+                model:(modelEl?.value||'deepseek-chat')
+              });
+            }else{
+              ans = answerAdvisorQuestion(prompt, ctx);
+            }
+            typing.remove();
+            append('bot', ans || 'Sin respuesta del LLM.');
+          }catch(e){
+            console.warn(e);
+            typing.remove();
+            append('bot', 'Error al contactar con el LLM.');
+          }
+        };
       })();
 
       function answerAdvisorQuestion(q, ctx){
@@ -2302,6 +2377,19 @@
         insightsEl.appendChild(best);
         insightsEl.appendChild(worst);
       }
+
+      // Space+click triggers DeepSeek commentary on the clicked section
+      let spaceHeld=false;
+      document.addEventListener('keydown', e=>{ if(e.code==='Space') spaceHeld=true; });
+      document.addEventListener('keyup', e=>{ if(e.code==='Space') spaceHeld=false; });
+      document.addEventListener('click', e=>{
+        if(!spaceHeld) return;
+        const target = e.target.closest('.card, canvas, table');
+        if(target && window.commentSection){
+          e.preventDefault();
+          window.commentSection(target);
+        }
+      });
     </script>
     <style>
       .opening-preview{
