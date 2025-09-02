@@ -138,7 +138,7 @@
         </div>
         <div class="group">
           <label class="small muted">Sesión (gap min)</label>
-          <input id="sessionGap" type="number" min="5" max="240" value="30" style="width:70px">
+          <input id="sessionGap" type="number" min="5" max="240" value="5" style="width:70px">
         </div>
         <div class="group">
           <span id="status" class="small muted">Listo</span>
@@ -193,7 +193,7 @@
 
         <div class="grid cols-2">
           <div class="panel">
-            <div class="row"><h2>Top aperturas (por rendimiento)</h2><div class="spacer"></div></div>
+            <div class="row"><h2>Top aperturas (por rendimiento)</h2><div class="spacer"></div><select id="openColorFilter" class="small"><option value="all">Todas</option><option value="white">Blancas</option><option value="black">Negras</option></select></div>
             <table class="table" id="openingsTable">
               <thead><tr>
                 <th>Apertura</th>
@@ -322,7 +322,7 @@
 
         <div class="grid cols-2">
           <div class="panel">
-            <div class="row"><h2>Winrate por nº partida en sesión</h2><div class="spacer"></div></div>
+            <div class="row"><h2>Winrate por nº partida seguida</h2><div class="spacer"></div></div>
             <canvas id="wrBySessionIdx"></canvas>
             <div class="small muted" id="explain-session"></div>
           </div>
@@ -346,6 +346,21 @@
           </div>
         </div>
 
+        <div class="grid cols-3">
+          <div class="panel">
+            <div class="row"><h2>Winrate tras racha ganadora</h2><div class="spacer"></div></div>
+            <canvas id="wrByWinStreak"></canvas>
+          </div>
+          <div class="panel">
+            <div class="row"><h2>Winrate tras racha perdedora</h2><div class="spacer"></div></div>
+            <canvas id="wrByLoseStreak"></canvas>
+          </div>
+          <div class="panel">
+            <div class="row"><h2>Winrate por descanso previo</h2><div class="spacer"></div></div>
+            <canvas id="wrByGap"></canvas>
+          </div>
+        </div>
+
         <div class="panel">
           <div class="row"><h2>Detalle rápido</h2><div class="spacer"></div>
             <button id="exportBtn" class="ghost small">Exportar JSON</button>
@@ -365,6 +380,7 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <script>
       // Utilidades básicas
       const $ = sel => document.querySelector(sel);
@@ -535,7 +551,10 @@
         return out;
       }
 
-      // Agregaciones y métricas
+      /**
+       * Aggregate normalized games into metrics for visualization.
+       * Includes streak and rest analyses.
+       */
       function aggregate(games, {mode='all', sinceMs=null}={}){
         let data = games.filter(g=>g.rules==='chess');
         if(mode!=='all') data = data.filter(g=>g.timeClass===mode);
@@ -619,7 +638,7 @@
 
         // Winrate por índice dentro de sesión (fatiga/momentum)
         // Sesión = juegos consecutivos separados por menos de sessionGap minutos
-        const gapMin = Math.max(5, Math.min(240, parseInt(document.getElementById('sessionGap')?.value||'30',10)));
+        const gapMin = Math.max(5, Math.min(240, parseInt(document.getElementById('sessionGap')?.value||'5',10)));
         const gapMsSess = gapMin*60*1000;
         const bySessionIdx = new Array(12).fill(0).map(()=>({w:0,d:0,l:0})); // 1..12 (12+=)
         let lastT = null; let idx=0;
@@ -654,13 +673,34 @@
           if(bi<byDuration.length){ const r=normalizeResult(g.result,g.meColor); byDuration[bi][r]++; }
         }
 
-        // KPIs
+        // KPIs y métricas de rachas/gaps
         const total = data.length;
         let w=0,d=0,l=0, oppEloSum=0, oppCnt=0;
         let bestStreak=0, curStreak=0;
+        const byWinStreak = new Array(7).fill(0).map(()=>({w:0,d:0,l:0}));
+        const byLoseStreak = new Array(7).fill(0).map(()=>({w:0,d:0,l:0}));
+        const gapEdges = [0,5,15,30,60,180,1440,999999];
+        const byGap = new Array(gapEdges.length-1).fill(0).map(()=>({w:0,d:0,l:0}));
+        let winStreak=0, loseStreak=0;
+        let prevEnd=null;
         for(const g of data){
           const r = normalizeResult(g.result, g.meColor);
-          if(r==='w'){curStreak++; bestStreak = Math.max(bestStreak, curStreak);} else {curStreak=0}
+          if(winStreak>0){ const ws=Math.min(winStreak,6); byWinStreak[ws-1][r]++; }
+          if(loseStreak>0){ const ls=Math.min(loseStreak,6); byLoseStreak[ls-1][r]++; }
+          if(r==='w'){ winStreak++; loseStreak=0; curStreak++; bestStreak = Math.max(bestStreak, curStreak); }
+          else if(r==='l'){ loseStreak++; winStreak=0; curStreak=0; }
+          else { winStreak=0; loseStreak=0; curStreak=0; }
+          if(prevEnd!=null){
+            const start = g.endTime && g.durationSec!=null ? g.endTime - g.durationSec*1000 : g.endTime;
+            if(start!=null){
+              const diffMin = (start - prevEnd)/60000;
+              if(diffMin>=0){
+                let gi=0; while(gi<gapEdges.length-1 && !(diffMin>=gapEdges[gi] && diffMin<gapEdges[gi+1])) gi++;
+                if(gi<byGap.length) byGap[gi][r]++;
+              }
+            }
+          }
+          if(g.endTime) prevEnd = g.endTime;
           if(r==='w') w++; else if(r==='d') d++; else l++;
           if(g.oppElo){oppEloSum+=g.oppElo; oppCnt++;}
         }
@@ -682,6 +722,9 @@
           bySessionIdx,
           byEloDiff: { bins: diffBins, data: byEloDiff },
           byDuration: { edges: durEdges, data: byDuration },
+          byWinStreak,
+          byLoseStreak,
+          byGap: { edges: gapEdges, data: byGap },
           kpis: { total, bestStreak, winrate, maxElo: maxElo.v||null, oppAvg, avgMoves }
         };
       }
@@ -703,13 +746,16 @@
       // Render: Chart.js instancias globales
       let charts = {};
       function destroyCharts(){
-        Object.values(charts).forEach(c=>{ try{c.destroy()}catch{} }); charts={};
+        const ids=['eloByGame','resultsByMode','byColor','lengthHist','heatmap','wrBySessionIdx','wrByEloDiff','wrByDuration','wrByWinStreak','wrByLoseStreak','wrByGap'];
+        ids.forEach(id=>{ const c=Chart.getChart(id); if(c){ try{c.destroy();}catch{} } });
+        charts={};
       }
       const palette = {
         bullet:'#ff9f9f', blitz:'#3aa1ff', rapid:'#8be7a4', daily:'#ffce8b'
       };
 
       function renderAll(agg){
+        window.__AGG__ = agg;
         // KPIs
         $('#kpi-games').textContent = fmt.format(agg.kpis.total||0);
         $('#kpi-win-streak').textContent = agg.kpis.bestStreak||0;
@@ -892,78 +938,36 @@
         });
         charts.wrByDuration.canvas.parentNode.style.height='280px';
 
+        // Winrate tras rachas
+        const labelsWS = Array.from({length:7},(_,i)=> (i<6? String(i+1):'7+'));
+        const wrWS = agg.byWinStreak.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
+        charts.wrByWinStreak = new Chart($('#wrByWinStreak'),{
+          type:'bar', data:{ labels: labelsWS, datasets:[{label:'% Victorias', data: wrWS, backgroundColor:'#8be7a4'}]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.wrByWinStreak.canvas.parentNode.style.height='280px';
+
+        const wrLS = agg.byLoseStreak.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
+        charts.wrByLoseStreak = new Chart($('#wrByLoseStreak'),{
+          type:'bar', data:{ labels: labelsWS, datasets:[{label:'% Victorias', data: wrLS, backgroundColor:'#ff9f9f'}]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.wrByLoseStreak.canvas.parentNode.style.height='280px';
+
+        const g = agg.byGap.edges;
+        const labelsGap = Array.from({length:g.length-1},(_,i)=> i===g.length-2? `${g[i]}+m` : `${g[i]}-${g[i+1]}m`);
+        const wrGap = agg.byGap.data.map(c=>{ const t=c.w+c.d+c.l; return t? Math.round((c.w/t)*100):0; });
+        charts.wrByGap = new Chart($('#wrByGap'),{
+          type:'bar', data:{ labels: labelsGap, datasets:[{label:'% Victorias', data: wrGap, backgroundColor:'#3aa1ff'}]},
+          options:{responsive:true, maintainAspectRatio:false, scales:{y:{min:0,max:100}}, plugins:{legend:{display:false}}}
+        });
+        charts.wrByGap.canvas.parentNode.style.height='280px';
+
         // Explanations
         renderExplanations(agg);
 
-        // Tabla de aperturas
-        const tbody = $('#openingsTable tbody');
-        tbody.innerHTML = '';
-        for(const o of agg.openings){
-          const tr = document.createElement('tr');
-          tr.innerHTML = `
-            <td class="opening-cell" data-eco="${escapeHtml(o.eco)}" data-opening="${escapeHtml(o.opening)}"></td>
-            <td data-eco="${escapeHtml(o.eco)}" data-opening="${escapeHtml(o.opening)}" data-color="${o.color}">
-              <a class="op-link" href="${openingUrl(o.opening||'')}" target="_blank" rel="noopener">${escapeHtml(o.opening)}</a>
-              <div class="small muted" style="margin-top:2px">${escapeHtml(o.eco)}</div>
-            </td>
-            <td>${o.color==='white'?'Blancas':'Negras'}</td>
-            <td>${fmt.format(o.games)}</td>
-            <td><span class="pill win">${fmt.format(o.w)}</span></td>
-            <td><span class="pill draw">${fmt.format(o.d)}</span></td>
-            <td><span class="pill loss">${fmt.format(o.l)}</span></td>
-            <td>${(o.winrate*100).toFixed(1)}%</td>`;
-          const nameCell = tr.querySelector('.opening-cell');
-          nameCell.textContent = o.opening||'—';
-          try{ nameCell.dataset.sample = JSON.stringify(o.sample||[]); }catch{ nameCell.dataset.sample='[]'; }
-          tr.dataset.opening = o.opening||'';
-          tr.dataset.eco = o.eco||'';
-          tr.dataset.color = o.color||'';
-          // row click/hover to update advisor in tiempo real
-          tr.addEventListener('mouseenter', () => selectOpeningForAdvisor(o.opening, o.eco, o.color));
-          tr.addEventListener('click', (ev) => {
-            const a = ev.target && ev.target.closest ? ev.target.closest('a.op-link') : null;
-            if (a) {
-              ev.preventDefault();
-              selectOpeningForAdvisor(o.opening, o.eco, o.color);
-              window.open(a.href, '_blank', 'noopener');
-            } else {
-              selectOpeningForAdvisor(o.opening, o.eco, o.color);
-            }
-          });
-          tbody.appendChild(tr);
-        }
-        enableOpeningPreviews(tbody);
-        attachOpeningsSorting(document.getElementById('openingsTable'));
-
-        // Insights de aperturas (macro categorías)
-        const insightsEl = document.getElementById('openingInsights');
-        insightsEl.innerHTML = '';
-        const insights = buildOpeningInsights(agg.data);
-        const overall = Math.round((insights.overallWinrate||0)*100);
-        const makeList = (title, arr) => {
-          const card = document.createElement('div');
-          card.className = 'card';
-          const h = document.createElement('h3'); h.textContent = title; card.appendChild(h);
-          const ul = document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px';
-          arr.forEach(it => {
-            const li = document.createElement('li');
-            li.innerHTML = `<strong>${escapeHtml(it.key)}</strong> — ${fmt.format(it.games)} partidas, ${Math.round(it.winrate*100)}% vict.`;
-            ul.appendChild(li);
-          });
-          card.appendChild(ul);
-          return card;
-        };
-        const best = makeList('Mejores categorías', insights.best);
-        const worst = makeList('Peores categorías', insights.worst);
-        const summary = document.createElement('div');
-        summary.className = 'card';
-        const p = document.createElement('p');
-        p.className = 'muted';
-        p.textContent = insights.summary || `Winrate global ${overall}%`;
-        summary.appendChild(p);
-        insightsEl.appendChild(summary);
-        insightsEl.appendChild(best);
-        insightsEl.appendChild(worst);
+        // Aperturas
+        renderOpeningsSection(agg);
       }
 
       function escapeHtml(s){
@@ -1328,6 +1332,7 @@
       });
       $('#gapDays').addEventListener('input', rerenderFromDataset);
       $('#sessionGap').addEventListener('input', rerenderFromDataset);
+      $('#openColorFilter').addEventListener('change', ()=>{ const agg = window.__AGG__; if(agg) renderOpeningsSection(agg); });
       $('#concurrency').addEventListener('change', ()=>{ /* solo afecta próxima carga */});
       $('#exportBtn').addEventListener('click', ()=>{
         const data = window.__DATASET__||[];
@@ -2221,6 +2226,82 @@
       }
       const idxMax = (a)=> a.reduce((bi,v,i,arr)=> v>(arr[bi]??-1)? i:bi, 0);
       const idxMin = (a)=> a.reduce((bi,v,i,arr)=> v<(arr[bi]??1e9)? i:bi, 0);
+
+      /**
+       * Render openings table and category insights applying color filter.
+       * @param {Object} agg Aggregated dataset.
+       */
+      function renderOpeningsSection(agg){
+        const colorSel = $('#openColorFilter')?.value || 'all';
+        const tbody = $('#openingsTable tbody');
+        tbody.innerHTML = '';
+        const rows = agg.openings.filter(o=> colorSel==='all' || o.color===colorSel);
+        for(const o of rows){
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td class="opening-cell" data-eco="${escapeHtml(o.eco)}" data-opening="${escapeHtml(o.opening)}"></td>
+            <td data-eco="${escapeHtml(o.eco)}" data-opening="${escapeHtml(o.opening)}" data-color="${o.color}">
+              <a class="op-link" href="${openingUrl(o.opening||'')}" target="_blank" rel="noopener">${escapeHtml(o.opening)}</a>
+              <div class="small muted" style="margin-top:2px">${escapeHtml(o.eco)}</div>
+            </td>
+            <td>${o.color==='white'?'Blancas':'Negras'}</td>
+            <td>${fmt.format(o.games)}</td>
+            <td><span class="pill win">${fmt.format(o.w)}</span></td>
+            <td><span class="pill draw">${fmt.format(o.d)}</span></td>
+            <td><span class="pill loss">${fmt.format(o.l)}</span></td>
+            <td>${(o.winrate*100).toFixed(1)}%</td>`;
+          const nameCell = tr.querySelector('.opening-cell');
+          nameCell.textContent = o.opening||'—';
+          try{ nameCell.dataset.sample = JSON.stringify(o.sample||[]); }catch{ nameCell.dataset.sample='[]'; }
+          tr.dataset.opening = o.opening||'';
+          tr.dataset.eco = o.eco||'';
+          tr.dataset.color = o.color||'';
+          tr.addEventListener('mouseenter', () => selectOpeningForAdvisor(o.opening, o.eco, o.color));
+          tr.addEventListener('click', (ev) => {
+            const a = ev.target && ev.target.closest ? ev.target.closest('a.op-link') : null;
+            if (a) {
+              ev.preventDefault();
+              selectOpeningForAdvisor(o.opening, o.eco, o.color);
+              window.open(a.href, '_blank', 'noopener');
+            } else {
+              selectOpeningForAdvisor(o.opening, o.eco, o.color);
+            }
+          });
+          tbody.appendChild(tr);
+        }
+        enableOpeningPreviews(tbody);
+        attachOpeningsSorting(document.getElementById('openingsTable'));
+
+        const insightsEl = document.getElementById('openingInsights');
+        insightsEl.innerHTML = '';
+        const gamesFiltered = colorSel==='all' ? agg.data : agg.data.filter(g=>g.meColor===colorSel);
+        const insights = buildOpeningInsights(gamesFiltered);
+        const overall = Math.round((insights.overallWinrate||0)*100);
+        const makeList = (title, arr) => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          const h = document.createElement('h3'); h.textContent = title; card.appendChild(h);
+          const ul = document.createElement('ul'); ul.style.margin='6px 0'; ul.style.paddingLeft='18px';
+          arr.forEach(it => {
+            const li = document.createElement('li');
+            li.innerHTML = `<strong>${escapeHtml(it.key)}</strong> — ${fmt.format(it.games)} partidas, ${Math.round(it.winrate*100)}% vict.`;
+            ul.appendChild(li);
+          });
+          card.appendChild(ul);
+          return card;
+        };
+        const best = makeList('Mejores categorías', insights.best);
+        const worst = makeList('Peores categorías', insights.worst);
+        const summary = document.createElement('div');
+        summary.className = 'card';
+        const p = document.createElement('p');
+        p.className = 'muted';
+        p.textContent = insights.summary || `Winrate global ${overall}%`;
+        summary.appendChild(p);
+        insightsEl.appendChild(summary);
+        insightsEl.appendChild(best);
+        insightsEl.appendChild(worst);
+      }
     </script>
     <style>
       .opening-preview{
