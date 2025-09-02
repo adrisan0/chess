@@ -60,6 +60,10 @@ Los datos recuperados se guardan en el navegador durante 5 horas para evitar
 excesos de peticiones. Si necesitas información actualizada antes de ese plazo,
 usa el botón **Forzar descarga** para omitir la caché y traer la versión más reciente.
 
+## Análisis de precisión
+
+Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones. Esta métrica se almacena en el campo `precision` de cada partida y puede emplearse en futuras visualizaciones o análisis.
+
 ## Pruebas
 
 Se incluye un pequeño conjunto de pruebas para comprobar la lógica básica de puntuación del bot.

@@ -133,6 +133,12 @@
         const result = normalizeResult(g[meColor]?.result || g.result, meColor);
         const moves = extractMovesSAN(g.pgn||'');
         const norms = moves.map(normalizeSAN);
+        if(globalThis.GamePrecision && typeof globalThis.GamePrecision.analyzeGamePrecision === 'function'){
+          try{
+            const { averageCentipawnLoss } = await globalThis.GamePrecision.analyzeGamePrecision(g.pgn||'');
+            g.precision = averageCentipawnLoss;
+          }catch{}
+        }
         for(let i=0;i<moves.length;i++){
           const ply = i+1; // 1-based
           const side = (ply % 2 === 1) ? 'white' : 'black';
