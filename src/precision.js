@@ -190,7 +190,6 @@
         }
       }
     }catch{}
-
     const movesSan = extractMovesSAN(pgn).map(normalizeSAN);
     const movesUci = sanToUciSequence(movesSan);
     const factory = engineFactory || tryCreateEngine;

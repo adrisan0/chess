@@ -93,13 +93,22 @@
     return 'd';
   }
 
-  async function loadUserMoveStats(username, {months='all', ngramN=2}={}){
+  /**
+   * Load per-move statistics for a Chess.com user.
+   * Results are persisted in localStorage for up to five hours to
+   * limit API usage. Pass `force: true` to bypass the cache.
+   */
+  async function loadUserMoveStats(username, {months='all', ngramN=2, force=false}={}){
     const u = username.trim();
     if(!u) throw new Error('Usuario vacío');
     const cacheKey = `cc_move_stats_${u.toLowerCase()}_${months}`;
     try{
       const cached = localStorage.getItem(cacheKey);
-      if(cached){ return JSON.parse(cached); }
+      if(cached){
+        const obj = JSON.parse(cached);
+        const ttl = 1000*60*60*5; // 5h
+        if(!force && obj && (Date.now() - obj.t < ttl)) return obj.d;
+      }
     }catch{}
 
     const archList = await getJSON(API.archives(u));
@@ -222,7 +231,7 @@
 
     // attach after map at the end to keep payload compact
     try{ stats.after = after; }catch{}
-    try{ localStorage.setItem(cacheKey, JSON.stringify(stats)); }catch{}
+    try{ localStorage.setItem(cacheKey, JSON.stringify({ t: Date.now(), d: stats })); }catch{}
     return stats;
   }
 
