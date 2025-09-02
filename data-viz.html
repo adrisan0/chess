@@ -6,6 +6,7 @@
     <title>Chess.com - Analizador de Usuario</title>
     <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
     <link rel="preconnect" href="https://unpkg.com" crossorigin>
+    <link rel="icon" href="data:,">
     <style>
       :root{
         --bg:#0f1221;
@@ -403,6 +404,12 @@
       const $ = sel => document.querySelector(sel);
       const fmt = new Intl.NumberFormat('es-ES');
       const pct = v => (isFinite(v)? (v*100).toFixed(1)+'%':'—');
+
+      // Compute API base; if served from file:// use local proxy to avoid cross-origin errors
+      const defaultApiBase = () =>
+        (typeof location !== 'undefined' && location.protocol === 'file:')
+          ? 'http://localhost:8787/api/deepseek'
+          : '/api/deepseek';
 
       // API Chess.com
       const API = {
@@ -1427,7 +1434,7 @@
 
         // Load/save settings
         try {
-          apiBaseEl.value = localStorage.getItem('ds_api_base') || '/api/deepseek';
+          apiBaseEl.value = localStorage.getItem('ds_api_base') || defaultApiBase();
           modelEl.value = localStorage.getItem('ds_model') || 'deepseek-chat';
           useEl.checked = (localStorage.getItem('ds_use')||'false') === 'true';
           // Never auto-fill key into DOM value for safety; only keep in memory if present
@@ -1489,17 +1496,32 @@
         if(input) input.addEventListener('keydown', (e)=>{ if(e.key==='Enter') ask(); });
 
         /**
-         * Request a DeepSeek comment about a given section element.
+         * Request a DeepSeek comment about a given section element and show
+         * a temporary popup near the last mouse position.
          * @param {HTMLElement} el Target element to describe.
+         * @param {{x:number,y:number}} [pos] Mouse coordinates for the popup.
          */
-        window.commentSection = async function(el){
+        window.commentSection = async function(el, pos){
           if(!el) return;
-          const txt = (el.innerText||'').trim().replace(/\s+/g,' ').slice(0,400);
+          let txt = '';
+          if(el.tagName === 'CANVAS'){
+            const chart = Chart.getChart(el);
+            if(chart){
+              const title = chart.options?.plugins?.title?.text || 'chart';
+              const labels = chart.data.labels?.slice(0,5) || [];
+              const data = chart.data.datasets?.[0]?.data || [];
+              const avg = data.length ? (data.reduce((a,b)=>a+b,0)/data.length).toFixed(2) : null;
+              const pairs = labels.map((l,i)=>`${l}:${data[i]}`).join(', ');
+              txt = `${title}. ${pairs}${avg?`. Average ${avg}`:''}`;
+            }
+          } else {
+            txt = (el.innerText||'').trim().replace(/\s+/g,' ').slice(0,400);
+          }
           if(!txt) return;
           const typing = showTyping();
           try{
             let ans;
-            const prompt = `Describe briefly this section: "${txt}". Provide a chess improvement tip related to these data.`;
+            const prompt = `You are a chess coach. Analyze this data: "${txt}" and give a brief insight with an improvement tip.`;
             if(useEl?.checked){
               ans = await askDeepseekLLM(prompt, ctx, {
                 base:(apiBaseEl?.value||'').trim(),
@@ -1511,6 +1533,7 @@
             }
             typing.remove();
             append('bot', ans || 'Sin respuesta del LLM.');
+            if(ans) showDsPopup(ans, pos||{x:0,y:0});
           }catch(e){
             console.warn(e);
             typing.remove();
@@ -2257,7 +2280,7 @@
           const apiKeyEl = document.getElementById('dsApiKey');
           const modelEl = document.getElementById('dsModel');
           const use = (localStorage.getItem('ds_use')||'false')==='true';
-          const base = apiBaseEl?.value?.trim() || '/api/deepseek';
+        const base = apiBaseEl?.value?.trim() || defaultApiBase();
           const key = apiKeyEl?.value?.trim() || '';
           const model = modelEl?.value || 'deepseek-chat';
 
@@ -2283,7 +2306,7 @@
         try{
           const sys = 'Eres un analista de rendimiento de ajedrez. Resume en español en 2-4 frases qué sugiere cada variable sobre el rendimiento del jugador. Sé conciso y claro.';
           const usr = `Variable: ${name}. Datos agregados: ${JSON.stringify(payload)}`;
-          const url = (base||'/api/deepseek').replace(/\/$/,'') + '/chat/completions';
+          const url = (base||defaultApiBase()).replace(/\/$/,'') + '/chat/completions';
           const body = { model: model||'deepseek-chat', messages: [ {role:'system', content: sys}, {role:'user', content: usr} ], temperature: 0.2 };
           const digest = stableHash(JSON.stringify({name,payload}));
           const ck = 'explain:'+ (model||'deepseek-chat') + ':' + digest;
@@ -2434,16 +2457,106 @@
         attachOpeningsSorting(document.getElementById('gamesTable'));
       }
 
-      // Space+click triggers DeepSeek commentary on the clicked section
-      let spaceHeld=false;
-      document.addEventListener('keydown', e=>{ if(e.code==='Space') spaceHeld=true; });
-      document.addEventListener('keyup', e=>{ if(e.code==='Space') spaceHeld=false; });
-      document.addEventListener('click', e=>{
-        if(!spaceHeld) return;
-        const target = e.target.closest('.card, canvas, table');
-        if(target && window.commentSection){
+      // Hold 'd' and click to request a DeepSeek comment on the clicked section
+      let deepseekHeld = false;
+      let dsCursor;
+      let dsPopup;
+      let lastMouse = { x: 0, y: 0 };
+      let dsHighlightEl;
+      const DS_TARGET_SELECTOR = '.card, canvas, table, .panel';
+
+      /**
+       * Track mouse position, move cursor hint and update highlight.
+       * @param {MouseEvent} e Mouse move event.
+       */
+      function trackMouse(e) {
+        lastMouse = { x: e.clientX, y: e.clientY };
+        if (dsCursor) {
+          dsCursor.style.left = (lastMouse.x - 12) + 'px';
+          dsCursor.style.top = (lastMouse.y - 12) + 'px';
+        }
+        if (deepseekHeld) updateDsHighlight(e.target);
+      }
+
+      /**
+       * Highlight container under cursor during DeepSeek mode.
+       * @param {EventTarget} node Source node from mouse events.
+       */
+      function updateDsHighlight(node) {
+        const el = node?.closest?.(DS_TARGET_SELECTOR);
+        if (el === dsHighlightEl) return;
+        if (dsHighlightEl) dsHighlightEl.classList.remove('ds-highlight');
+        dsHighlightEl = el;
+        if (dsHighlightEl) dsHighlightEl.classList.add('ds-highlight');
+      }
+
+      /**
+       * Show cursor animation indicating DeepSeek mode.
+       */
+      function showDsCursor() {
+        if (dsCursor) return;
+        dsCursor = document.createElement('div');
+        dsCursor.id = 'deepseek-cursor';
+        dsCursor.style.left = (lastMouse.x - 12) + 'px';
+        dsCursor.style.top = (lastMouse.y - 12) + 'px';
+        document.body.appendChild(dsCursor);
+      }
+
+      /**
+       * Remove cursor animation.
+       */
+      function hideDsCursor() {
+        if (!dsCursor) return;
+        dsCursor.remove();
+        dsCursor = null;
+      }
+      function showDsPopup(text, pos){
+        hideDsPopup();
+        dsPopup = document.createElement('div');
+        dsPopup.id = 'deepseek-popup';
+        dsPopup.textContent = text;
+        dsPopup.style.left = (pos.x + 16) + 'px';
+        dsPopup.style.top = (pos.y + 16) + 'px';
+        document.body.appendChild(dsPopup);
+        setTimeout(hideDsPopup, 5000);
+      }
+
+      function hideDsPopup(){
+        if(!dsPopup) return;
+        dsPopup.remove();
+        dsPopup = null;
+      }
+      document.addEventListener('mousemove', trackMouse);
+      document.addEventListener('keydown', e => {
+        if (e.key === 'd' || e.key === 'D') {
+          deepseekHeld = true;
+          showDsCursor();
+          updateDsHighlight(document.elementFromPoint(lastMouse.x, lastMouse.y));
+        }
+      });
+      document.addEventListener('keyup', e => {
+        if (e.key === 'd' || e.key === 'D') {
+          deepseekHeld = false;
+          hideDsCursor();
+          hideDsPopup();
+          if (dsHighlightEl) {
+            dsHighlightEl.classList.remove('ds-highlight');
+            dsHighlightEl = null;
+          }
+        }
+      });
+      document.addEventListener('click', e => {
+        if (!deepseekHeld) return;
+        deepseekHeld = false;
+        hideDsCursor();
+        if (dsHighlightEl) {
+          dsHighlightEl.classList.remove('ds-highlight');
+          dsHighlightEl = null;
+        }
+        const target = e.target.closest(DS_TARGET_SELECTOR);
+        if (target && window.commentSection) {
           e.preventDefault();
-          window.commentSection(target);
+          window.commentSection(target, lastMouse);
         }
       });
     </script>
@@ -2470,6 +2583,39 @@
       a.op-link:hover{ text-decoration: underline; }
       #openingsTable tbody tr{ cursor: pointer; }
       #openingsTable tbody tr.selected{ outline: 2px solid #3aa1ff; outline-offset: -2px; background: linear-gradient(180deg, rgba(58,161,255,.12), rgba(58,161,255,.06)); }
+
+      .ds-highlight{ box-shadow: 0 0 0 2px #3aa1ff; border-color: #3aa1ff !important; }
+      #deepseek-cursor{
+        position: fixed;
+        width: 24px;
+        height: 24px;
+        pointer-events: none;
+        border: 2px solid #3aa1ff;
+        border-radius: 50%;
+        z-index: 1000;
+        animation: dsPulse 1s infinite ease-in-out;
+      }
+
+      #deepseek-popup{
+        position: fixed;
+        max-width: 240px;
+        pointer-events: none;
+        background: linear-gradient(180deg, var(--panel), var(--panel-2));
+        border: 1px solid #3aa1ff;
+        border-radius: 8px;
+        padding: 8px 10px;
+        font-size: 12px;
+        line-height: 1.3;
+        color: var(--text);
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0,0,0,.3);
+      }
+
+      @keyframes dsPulse{
+        0%{ transform: scale(1); opacity: 1; }
+        50%{ transform: scale(1.5); opacity: 0.5; }
+        100%{ transform: scale(1); opacity: 1; }
+      }
 
       /* Chat UI */
       .chat{ max-height: 260px; overflow:auto; padding: 8px; border:1px solid #262a45; border-radius:12px; background:linear-gradient(180deg, rgba(26,32,66,.35), rgba(21,26,54,.35)); }
