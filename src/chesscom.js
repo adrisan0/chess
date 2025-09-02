@@ -124,6 +124,13 @@
         const result = normalizeResult(g[meColor]?.result || g.result, meColor);
         const moves = extractMovesSAN(g.pgn||'');
         const norms = moves.map(normalizeSAN);
+        if(globalThis.GamePrecision && typeof globalThis.GamePrecision.analyzeGamePrecision === 'function'){
+          try{
+            const res = await globalThis.GamePrecision.analyzeGamePrecision(g.pgn||'');
+            g.precision = meColor==='white' ? res.white : res.black;
+            g.oppPrecision = meColor==='white' ? res.black : res.white;
+          }catch{}
+        }
         for(let i=0;i<moves.length;i++){
           const ply = i+1; // 1-based
           const side = (ply % 2 === 1) ? 'white' : 'black';
