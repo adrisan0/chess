@@ -2377,15 +2377,63 @@
         insightsEl.appendChild(best);
         insightsEl.appendChild(worst);
       }
+      // Hold 'd' and click to request a DeepSeek comment on the clicked section
+      let deepseekHeld = false;
+      let dsCursor;
+      let lastMouse = { x: 0, y: 0 };
 
-      // Space+click triggers DeepSeek commentary on the clicked section
-      let spaceHeld=false;
-      document.addEventListener('keydown', e=>{ if(e.code==='Space') spaceHeld=true; });
-      document.addEventListener('keyup', e=>{ if(e.code==='Space') spaceHeld=false; });
-      document.addEventListener('click', e=>{
-        if(!spaceHeld) return;
+      /**
+       * Track mouse position and move cursor hint if visible.
+       * @param {MouseEvent} e Mouse move event.
+       */
+      function trackMouse(e) {
+        lastMouse = { x: e.clientX, y: e.clientY };
+        if (dsCursor) {
+          dsCursor.style.left = (lastMouse.x - 12) + 'px';
+          dsCursor.style.top = (lastMouse.y - 12) + 'px';
+        }
+      }
+
+      /**
+       * Show cursor animation indicating DeepSeek mode.
+       */
+      function showDsCursor() {
+        if (dsCursor) return;
+        dsCursor = document.createElement('div');
+        dsCursor.id = 'deepseek-cursor';
+        dsCursor.style.left = (lastMouse.x - 12) + 'px';
+        dsCursor.style.top = (lastMouse.y - 12) + 'px';
+        document.body.appendChild(dsCursor);
+      }
+
+      /**
+       * Remove cursor animation.
+       */
+      function hideDsCursor() {
+        if (!dsCursor) return;
+        dsCursor.remove();
+        dsCursor = null;
+      }
+
+      document.addEventListener('mousemove', trackMouse);
+      document.addEventListener('keydown', e => {
+        if (e.key === 'd' || e.key === 'D') {
+          deepseekHeld = true;
+          showDsCursor();
+        }
+      });
+      document.addEventListener('keyup', e => {
+        if (e.key === 'd' || e.key === 'D') {
+          deepseekHeld = false;
+          hideDsCursor();
+        }
+      });
+      document.addEventListener('click', e => {
+        if (!deepseekHeld) return;
+        deepseekHeld = false;
+        hideDsCursor();
         const target = e.target.closest('.card, canvas, table');
-        if(target && window.commentSection){
+        if (target && window.commentSection) {
           e.preventDefault();
           window.commentSection(target);
         }
@@ -2414,6 +2462,23 @@
       a.op-link:hover{ text-decoration: underline; }
       #openingsTable tbody tr{ cursor: pointer; }
       #openingsTable tbody tr.selected{ outline: 2px solid #3aa1ff; outline-offset: -2px; background: linear-gradient(180deg, rgba(58,161,255,.12), rgba(58,161,255,.06)); }
+
+      #deepseek-cursor{
+        position: fixed;
+        width: 24px;
+        height: 24px;
+        pointer-events: none;
+        border: 2px solid #3aa1ff;
+        border-radius: 50%;
+        z-index: 1000;
+        animation: dsPulse 1s infinite ease-in-out;
+      }
+
+      @keyframes dsPulse{
+        0%{ transform: scale(1); opacity: 1; }
+        50%{ transform: scale(1.5); opacity: 0.5; }
+        100%{ transform: scale(1); opacity: 1; }
+      }
 
       /* Chat UI */
       .chat{ max-height: 260px; overflow:auto; padding: 8px; border:1px solid #262a45; border-radius:12px; background:linear-gradient(180deg, rgba(26,32,66,.35), rgba(21,26,54,.35)); }
