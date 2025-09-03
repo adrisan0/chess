@@ -63,17 +63,13 @@ usa el botón **Forzar descarga** para omitir la caché y traer la versión más
 
 ## Análisis de precisión
 
-Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones. Esta métrica se almacena en el campo `precision` de cada partida y puede emplearse en futuras visualizaciones o análisis.
-
-## Análisis de precisión
-
-Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones. Esta métrica se almacena en el campo `precision` de cada partida y puede emplearse en futuras visualizaciones o análisis. Las evaluaciones se guardan en caché, evitando que Stockfish vuelva a analizar partidas ya procesadas salvo que se encuentren datos nuevos.
-
-## Análisis de precisión
-
-Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones de ambos jugadores. Los valores se guardan en `precision` (tu media) y `oppPrecision` (la del rival) y pueden utilizarse en las visualizaciones. Las evaluaciones se guardan en caché, evitando reprocesar partidas ya analizadas salvo que existan datos nuevos. Para habilitar este cálculo, la página debe incluir el script `src/precision.js` y contar con un motor compatible en `src/stockfish.js`. En `data-viz.html` estas métricas aparecen en el listado de partidas y como columnas adicionales en la tabla de aperturas.
+Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones de ambos jugadores. Los resultados se guardan en `precision` (tu media) y `oppPrecision` (la del rival). Las evaluaciones se almacenan en caché para evitar reprocesar partidas ya analizadas salvo que existan datos nuevos. Estas métricas se muestran en `data-viz.html` como columnas adicionales y en el listado de partidas.
 
 ## Pruebas
 
-Se incluye un pequeño conjunto de pruebas para comprobar la lógica básica de puntuación del bot.
-Ejecuta `node tests/evaluateMove.test.js` desde la raíz del proyecto.
+Se incluye un pequeño conjunto de pruebas para comprobar la lógica del motor y el cálculo de precisión.
+Ejecuta `node tests/evaluateMove.test.js` y `node tests/precision.test.js` desde la raíz del proyecto.
+
+## Mantenimiento
+
+Se eliminaron archivos duplicados y versiones antiguas para mantener una estructura clara y evitar funcionalidades huérfanas.
