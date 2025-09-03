@@ -71,7 +71,7 @@ Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stock
 
 ## Análisis de precisión
 
-Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones de ambos jugadores. Los valores se guardan en `precision` (tu media) y `oppPrecision` (la del rival) y pueden utilizarse en las visualizaciones. Las evaluaciones se guardan en caché, evitando reprocesar partidas ya analizadas salvo que existan datos nuevos. En `data-viz.html` estas métricas aparecen en el listado de partidas y como columnas adicionales en la tabla de aperturas.
+Al cargar datos de Chess.com, cada partida se evalúa automáticamente con Stockfish para estimar la pérdida media de centipeones de ambos jugadores. Los valores se guardan en `precision` (tu media) y `oppPrecision` (la del rival) y pueden utilizarse en las visualizaciones. Las evaluaciones se guardan en caché, evitando reprocesar partidas ya analizadas salvo que existan datos nuevos. Para habilitar este cálculo, la página debe incluir el script `src/precision.js` y contar con un motor compatible en `src/stockfish.js`. En `data-viz.html` estas métricas aparecen en el listado de partidas y como columnas adicionales en la tabla de aperturas.
 
 ## Pruebas
 

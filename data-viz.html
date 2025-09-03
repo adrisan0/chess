@@ -397,6 +397,7 @@
       </div>
     </div>
 
+    <script src="src/precision.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3"></script>
     <script>
@@ -526,7 +527,13 @@
         return moves;
       }
 
-      // Transformar juegos a dataset canónico
+      /**
+       * Normalize raw games from a monthly archive.
+       * Includes raw PGN so callers can run precision analysis.
+       * @param {Object} archData Monthly archive data.
+       * @param {string} username Username whose games are kept.
+       * @returns {Array<Object>} Normalized games.
+       */
       function normalizeGames(archData, username){
         const u = username.toLowerCase();
         const out = [];
@@ -570,6 +577,7 @@
             endTime, movesPlies,
             durationSec,
             movesSAN,
+            pgn,
           });
         }
         return out;
@@ -1360,6 +1368,19 @@
         // Normalizar todo
         setStatus('Procesando…');
         const allGames = monthsData.flatMap(m=> normalizeGames(m, username));
+
+        if(globalThis.GamePrecision && typeof globalThis.GamePrecision.analyzeGamePrecision === 'function'){
+          await pMap(allGames, async g => {
+            try{
+              const res = await globalThis.GamePrecision.analyzeGamePrecision(g.pgn || '');
+              g.precision = g.meColor === 'white' ? res.white : res.black;
+              g.oppPrecision = g.meColor === 'white' ? res.black : res.white;
+            }catch{}
+            delete g.pgn;
+          }, {concurrency:1});
+        } else {
+          allGames.forEach(g => { delete g.pgn; });
+        }
 
         // Agregar y pintar
         const mode = $('#modeFilter').value;
